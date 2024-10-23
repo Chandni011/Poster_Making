@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="150dp"
+        android:layout_height="150dp">
+
+        <TextView
+            android:id="@+id/tvDate"
+            android:layout_width="90dp"
+            android:layout_height="20dp"
+            android:layout_alignEnd="@id/ivUpcoming"
+            android:background="@drawable/date_background"
+            android:textColor="@color/white"/>
+
+        <ImageView
+            android:id="@+id/ivUpcoming"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="15dp"/>
+
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/tvUpcoming"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Title"
+        android:textSize="14sp"
+        android:textColor="@color/black"
+        android:textStyle="bold"
+        android:textAlignment="center"
+        android:layout_marginStart="-8dp"/>
+
+</LinearLayout>

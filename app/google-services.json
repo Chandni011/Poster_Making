@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "671594851219",
+    "project_id": "poster-maker-e7209",
+    "storage_bucket": "poster-maker-e7209.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:671594851219:android:e542cb748be183ea8cd666",
+        "android_client_info": {
+          "package_name": "com.deificdigital.poster_making"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtaYI5aYjwlbSX6Yau9Y8wmGwEZD-1Zdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

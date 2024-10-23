@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="TemplateView">
+        <attr name="gnt_template_type" format="reference"/>
+    </declare-styleable>
+
+    <declare-styleable name="ShapesImage">
+        <attr name="shapeDrawable" format="reference" />
+        <attr name="shape" format="enum">
+            <enum name="octagon" value="1"/>
+            <enum name="diamond" value="2"/>
+        </attr>
+    </declare-styleable>
+
+    <declare-styleable name="advDrawerLayout">
+        <attr name="adl_customBehavior" format="boolean" />
+        <attr name="adl_viewScale" format="float" />
+        <attr name="adl_viewScrimColor" format="color" />
+        <attr name="adl_viewElevation" format="dimension" />
+        <attr name="adl_drawerElevation" format="dimension" />
+        <attr name="adl_cardBackgroundColor" format="reference|color" />
+    </declare-styleable>
+
+    <declare-styleable name="LineColorPicker">
+        <attr name="orientation" format="enum">
+            <enum name="horizontal" value="0" />
+            <enum name="vertical" value="1" />
+        </attr>
+        <attr name="colors" format="reference" />
+        <attr name="selectedColorIndex" format="integer" />
+    </declare-styleable>
+
+    <declare-styleable name="RotateLoading">
+        <attr name="loading_width" format="dimension" />
+        <attr name="loading_color" format="color" />
+        <attr name="shadow_position" format="integer" />
+        <attr name="loading_speed" format="integer" />
+    </declare-styleable>
+
+    <declare-styleable name="CradleBall">
+        <attr name="cradle_ball_color" format="color" />
+    </declare-styleable>
+
+    <declare-styleable name="TextViewOutline">
+        <attr name="mShadowColor" format="color" />
+        <attr name="mShadowDy" format="float" />
+        <attr name="mShadowDx" format="float" />
+        <attr name="mShadowRadius" format="float" />
+        <attr name="mOutlineColor" format="color" />
+        <attr name="mOutlineSize" format="dimension" />
+    </declare-styleable>
+
+</resources>
