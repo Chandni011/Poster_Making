@@ -5,7 +5,18 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    android:background="@color/white">
+
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottieVegetables"
+        android:layout_width="400dp"
+        android:layout_height="400dp"
+        app:lottie_rawRes="@raw/no_internet_lottie"
+        android:layout_centerInParent="true"
+        app:lottie_autoPlay="true"
+        app:lottie_loop="true"
+        android:visibility="gone"/>
 
     <FrameLayout
         android:id="@+id/fragment_container"
@@ -27,7 +38,8 @@
         app:itemIconTint="@drawable/item_text_color"
         app:itemTextColor="@drawable/item_text_color"
         app:menu="@menu/bottom_nav_menu"
-        app:itemPaddingBottom="30dp">
+        app:itemPaddingBottom="30dp"
+        android:layout_marginBottom="-15dp">
 
     </com.google.android.material.bottomnavigation.BottomNavigationView>
 

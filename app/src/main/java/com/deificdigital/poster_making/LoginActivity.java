@@ -1,9 +1,8 @@
 package com.deificdigital.poster_making;
 
-import static android.provider.Settings.System.getString;
-
-import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.activity.EdgeToEdge;
@@ -29,6 +28,7 @@ public class LoginActivity extends AppCompatActivity {
     private static final int RC_SIGN_IN = 123;
     private FirebaseAuth mAuth;
     private GoogleSignInClient mGoogleSignInClient;
+    private SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,12 +38,19 @@ public class LoginActivity extends AppCompatActivity {
 
         FirebaseApp.initializeApp(this);
         mAuth = FirebaseAuth.getInstance();
+        sharedPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
 
-        // Configure Google Sign-In
+        // Check if the user is a returning user
+        boolean isReturningUser = sharedPreferences.getBoolean("isReturningUser", false);
+        if (isReturningUser) {
+            navigateToMainActivity();
+            return; // Exit onCreate to avoid initializing login UI
+        }
+
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id)) // from google-services.json
                 .requestEmail()
-                .requestProfile() // To request profile information
+                .requestProfile()
                 .build();
 
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
@@ -79,15 +86,17 @@ public class LoginActivity extends AppCompatActivity {
             }
         }
     }
+
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         mAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
             if (task.isSuccessful()) {
                 FirebaseUser user = mAuth.getCurrentUser();
                 if (user != null) {
-
                     String name = user.getDisplayName();
                     String email = user.getEmail();
+
+                    sharedPreferences.edit().putBoolean("isReturningUser", true).apply();
 
                     Intent intent = new Intent(LoginActivity.this, PersonalDetailsActivity.class);
                     intent.putExtra("name", name);
@@ -99,5 +108,11 @@ public class LoginActivity extends AppCompatActivity {
                 // Handle sign-in failure
             }
         });
+    }
+
+    private void navigateToMainActivity() {
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
     }
 }

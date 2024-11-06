@@ -2,12 +2,12 @@ package com.deificdigital.poster_making.Adapters;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -44,16 +44,23 @@ public class NewestAdapter extends RecyclerView.Adapter<NewestAdapter.PostViewHo
             String fullImageUrl = "https://postermaking.deifichrservices.com/public/" + imageUrl;
             Glide.with(context)
                     .load(fullImageUrl)
-                    .placeholder(R.drawable.image_holder)
-                    .error(R.drawable.img)
                     .into(holder.postImageView);
 
             // Log the full URL to verify
             Log.d("NewestAdapter", "Image URL: " + fullImageUrl);
 
+            // Handle click to open FullImageActivity
             holder.postImageView.setOnClickListener(v -> {
                 Intent intent = new Intent(context, FullImageActivity.class);
-                intent.putExtra("image_url", fullImageUrl);  // Pass the full image URL
+                intent.putExtra("image_url", fullImageUrl);
+
+                // Retrieve data from SharedPreferences
+                SharedPreferences sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                intent.putExtra("name", sharedPreferences.getString("name", ""));
+                intent.putExtra("designation", sharedPreferences.getString("designation", ""));
+                intent.putExtra("companyName", sharedPreferences.getString("company_name", ""));
+                intent.putExtra("phone", sharedPreferences.getString("phone", ""));
+
                 context.startActivity(intent);
             });
         } else {
@@ -63,19 +70,12 @@ public class NewestAdapter extends RecyclerView.Adapter<NewestAdapter.PostViewHo
         }
     }
 
-
     @Override
     public int getItemCount() {
         return posts.size();
     }
 
-    public void setPosts(List<NewestModel> posts) {
-        this.posts = posts;
-        notifyDataSetChanged();
-    }
-
     public static class PostViewHolder extends RecyclerView.ViewHolder {
-
         ImageView postImageView;
 
         public PostViewHolder(@NonNull View itemView) {

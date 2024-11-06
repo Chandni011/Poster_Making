@@ -1,6 +1,7 @@
 package com.deificdigital.poster_making.Adapters;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.deificdigital.poster_making.FullCategoryImage;
 import com.deificdigital.poster_making.R;
 import com.deificdigital.poster_making.models.Category;
 
@@ -46,6 +48,14 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHo
         Glide.with(context)
                 .load(imageUrl)
                 .into(holder.ivUpcoming);
+
+        holder.itemView.setOnClickListener(v -> {
+            Intent intent = new Intent(context, FullCategoryImage.class);
+            intent.putExtra("id", category.getId());
+            intent.putExtra("category_type", category.getCategoryType());
+            intent.putExtra("category_name", category.getName());
+            context.startActivity(intent);
+        });
     }
 
     @Override

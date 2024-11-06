@@ -6,25 +6,31 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
+
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.deificdigital.poster_making.Adapters.CategoryAdapter;
+import com.deificdigital.poster_making.Adapters.CustomAdapter;
 import com.deificdigital.poster_making.Adapters.NewestAdapter;
 import com.deificdigital.poster_making.Adapters.ViewPagerAdapter;
 import com.deificdigital.poster_making.R;
 import com.deificdigital.poster_making.models.Category;
+import com.deificdigital.poster_making.models.CustomModel;
 import com.deificdigital.poster_making.models.NewestModel;
 import com.deificdigital.poster_making.responses.ApiResponse;
 import com.deificdigital.poster_making.models.ImageData;
 import com.deificdigital.poster_making.responses.CategoryResponse;
+import com.deificdigital.poster_making.responses.CustomResponse;
 import com.deificdigital.poster_making.responses.NewestResponse;
 
 import java.util.List;
 
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -43,9 +49,10 @@ public class HomeFragment extends Fragment {
     private CategoryAdapter adapter;
     private NewestAdapter newestAdapter;
     private RecyclerView newestRecyclerView;
+    private RecyclerView customRecyclerView;
+    private CustomAdapter customAdapter;
 
     public HomeFragment() {
-        // Required empty public constructor
     }
 
     @Override
@@ -69,6 +76,36 @@ public class HomeFragment extends Fragment {
         recyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 1, GridLayoutManager.HORIZONTAL, false));
 
         fetchCategories();
+
+        customRecyclerView = view.findViewById(R.id.rvCustom);
+        customRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 1, GridLayoutManager.HORIZONTAL, false));
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://postermaking.deifichrservices.com/") // Base URL
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ApiServiceCustom apiService = retrofit.create(ApiServiceCustom.class);
+
+        Call<CustomResponse> call = apiService.fetchCategories();
+        call.enqueue(new Callback<CustomResponse>() {
+            @Override
+            public void onResponse(Call<CustomResponse> call, Response<CustomResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<CustomModel> dataList = response.body().getData();
+                    customAdapter = new CustomAdapter(getContext(), dataList);
+                    customRecyclerView.setAdapter(customAdapter);
+                } else {
+                    Toast.makeText(getContext(), "Failed to load data", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CustomResponse> call, Throwable t) {
+                Log.e("API Error", "onFailure: " + t.getMessage());
+                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
 
         return view;
     }
@@ -140,7 +177,6 @@ public class HomeFragment extends Fragment {
                 if (response.isSuccessful() && response.body() != null) {
                     List<NewestModel> postList = response.body().getData();
 
-                    // Log to check if postImage values are correct
                     for (NewestModel post : postList) {
                         Log.d("API", "Image URL: " + post.getPostImage());
                     }
@@ -200,5 +236,10 @@ public class HomeFragment extends Fragment {
     public interface ApiServiceNewest {
         @GET("api/upcomming-dayspost")
         Call<NewestResponse> getPosts();
+    }
+
+    public interface ApiServiceCustom {
+        @GET("api/custom-category") // Replace with the actual endpoint
+        Call<CustomResponse> fetchCategories();
     }
 }

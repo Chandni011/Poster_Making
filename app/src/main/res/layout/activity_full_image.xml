@@ -38,6 +38,60 @@
             app:layout_constraintStart_toEndOf="@id/ivBack"
             app:layout_constraintTop_toTopOf="parent" />
 
+<!--        <LinearLayout-->
+<!--            android:id="@+id/llUndo"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            app:layout_constraintEnd_toStartOf="@id/llRedo"-->
+<!--            app:layout_constraintBottom_toBottomOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent"-->
+<!--            android:orientation="vertical"-->
+<!--            android:gravity="center_horizontal"-->
+<!--            android:layout_marginEnd="@dimen/_10sdp">-->
+
+<!--            <ImageView-->
+<!--                android:id="@+id/ivUndo"-->
+<!--                android:layout_width="@dimen/_35sdp"-->
+<!--                android:layout_height="@dimen/_35sdp"-->
+<!--                android:src="@drawable/ic_undo"/>-->
+
+<!--            <TextView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Undo"-->
+<!--                android:textSize="@dimen/_10sdp"-->
+<!--                android:textColor="@color/white"-->
+<!--                android:layout_marginTop="-6dp"/>-->
+
+<!--        </LinearLayout>-->
+
+<!--        <LinearLayout-->
+<!--            android:id="@+id/llRedo"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            app:layout_constraintEnd_toStartOf="@id/ivDownload"-->
+<!--            app:layout_constraintBottom_toBottomOf="parent"-->
+<!--            app:layout_constraintTop_toTopOf="parent"-->
+<!--            android:orientation="vertical"-->
+<!--            android:gravity="center_horizontal"-->
+<!--            android:layout_marginEnd="@dimen/_10sdp">-->
+
+<!--            <ImageView-->
+<!--                android:id="@+id/ivRedo"-->
+<!--                android:layout_width="@dimen/_35sdp"-->
+<!--                android:layout_height="@dimen/_35sdp"-->
+<!--                android:src="@drawable/ic_redo"/>-->
+
+<!--            <TextView-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:text="Redo"-->
+<!--                android:textSize="@dimen/_10sdp"-->
+<!--                android:textColor="@color/white"-->
+<!--                android:layout_marginTop="-6dp"/>-->
+
+<!--        </LinearLayout>-->
+
         <ImageView
             android:id="@+id/ivDownload"
             android:layout_width="35dp"
@@ -52,15 +106,14 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <androidx.cardview.widget.CardView
+    <RelativeLayout
+        android:id="@+id/rlImage"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/clHead"
-        android:layout_marginTop="10dp">
+        android:layout_marginTop="@dimen/_10sdp">
 
         <ja.burhanrashid52.photoeditor.PhotoEditorView
             android:id="@+id/photoEditorView"
@@ -69,25 +122,29 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"/>
 
-    </androidx.cardview.widget.CardView>
+    </RelativeLayout>
 
-    <LinearLayout
+    <HorizontalScrollView
         android:layout_width="match_parent"
-        android:layout_height="70dp"
-        android:background="@drawable/bottom_nav_bg"
+        android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        android:gravity="center_vertical">
+        android:background="@drawable/bottom_nav_bg">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
+            android:layout_height="70dp"
+            android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="60dp"
             android:layout_height="60dp"
-            android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center_horizontal">
+            android:gravity="center_horizontal"
+            android:layout_marginStart="@dimen/_10sdp">
 
             <ImageView
-                android:id="@+id/ivAddText"
+                android:id="@+id/ivEditText"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:src="@drawable/ic_add_text"
@@ -98,35 +155,232 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Add Text"
+                android:text="Edit Text"
                 android:fontFamily="@font/poppins_medium"
                 android:textStyle="bold"
-                android:layout_marginTop="-5dp"/>
+                android:layout_marginTop="-5dp"
+                android:textSize="@dimen/_10sdp"/>
 
         </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginStart="@dimen/_10sdp">
+
+                <ImageView
+                    android:id="@+id/ivAddText"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_add_text"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Add Text"
+                    android:fontFamily="@font/poppins_medium"
+                    android:textStyle="bold"
+                    android:layout_marginTop="-5dp"
+                    android:textSize="@dimen/_10sdp"/>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginStart="@dimen/_10sdp">
+
+                <ImageView
+                    android:id="@+id/ivChangeColor"
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/ic_color"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Change"
+                        android:fontFamily="@font/poppins_medium"
+                        android:textStyle="bold"
+                        android:textSize="@dimen/_10sdp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Color"
+                        android:fontFamily="@font/poppins_medium"
+                        android:textStyle="bold"
+                        android:textSize="@dimen/_10sdp"
+                        android:layout_marginTop="-5dp"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginStart="@dimen/_10sdp">
+
+                <ImageView
+                    android:id="@+id/ivChangeFont"
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/ic_font"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Change"
+                        android:fontFamily="@font/poppins_medium"
+                        android:textStyle="bold"
+                        android:textSize="@dimen/_10sdp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Font"
+                        android:fontFamily="@font/poppins_medium"
+                        android:textStyle="bold"
+                        android:textSize="@dimen/_10sdp"
+                        android:layout_marginTop="-5dp"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="80dp"
+                android:layout_height="60dp"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:layout_marginStart="@dimen/_10sdp">
+
+                <ImageView
+                    android:id="@+id/ivAddImage"
+                    android:layout_width="40dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/ic_photo"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Add Image"
+                    android:fontFamily="@font/poppins_medium"
+                    android:textSize="@dimen/_10sdp"
+                    android:gravity="center_horizontal"
+                    android:textStyle="bold"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
+    <LinearLayout
+        android:id="@+id/llColor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivDown"
+            android:layout_width="@dimen/_30sdp"
+            android:layout_height="@dimen/_30sdp"
+            android:src="@drawable/ic_down"
+            android:background="@color/green"
+            android:layout_gravity="end"/>
+
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="60dp"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center_horizontal">
+            android:layout_width="match_parent"
+            android:layout_height="70dp"
+            android:background="@drawable/bottom_nav_bg">
 
             <ImageView
-                android:id="@+id/ivAddImage"
-                android:layout_width="40dp"
-                android:layout_height="35dp"
-                android:src="@drawable/ic_photo"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"/>
+                android:layout_width="@dimen/_30sdp"
+                android:layout_height="@dimen/_30sdp"
+                android:src="@drawable/color_selection"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="@dimen/_10sdp"
+                android:layout_marginEnd="@dimen/_10sdp"/>
 
-            <TextView
-                android:layout_width="wrap_content"
+            <HorizontalScrollView
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Add Image"
-                android:fontFamily="@font/poppins_medium"
-                android:textStyle="bold"/>
+                android:layout_gravity="center_vertical"
+                android:layout_marginEnd="@dimen/_10sdp">
+
+                <LinearLayout
+                    android:id="@+id/colorPalette"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/_30sdp"
+                    android:orientation="horizontal"/>
+
+            </HorizontalScrollView>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/llFont"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivDown2"
+            android:layout_width="@dimen/_30sdp"
+            android:layout_height="@dimen/_30sdp"
+            android:src="@drawable/ic_down"
+            android:background="@color/green"
+            android:layout_gravity="end"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/_150sdp"
+            android:background="@color/fontbg">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvFonts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
 
         </LinearLayout>
 

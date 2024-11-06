@@ -1,439 +1,613 @@
 package com.deificdigital.poster_making;
 
-import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.ContentValues;
-import android.content.DialogInterface;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.LayoutInflater;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.SeekBar;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.RoundedBitmapDrawable;
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
-import com.google.android.material.imageview.ShapeableImageView;
+import com.deificdigital.poster_making.Adapters.FontAdapter;
+import com.deificdigital.poster_making.classes.SharedViewModel;
+import com.deificdigital.poster_making.models.FontModel;
+import com.deificdigital.poster_making.models.User;
+import com.deificdigital.poster_making.responses.UserResponse;
 import com.yalantis.ucrop.UCrop;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import ja.burhanrashid52.photoeditor.PhotoEditor;
 import ja.burhanrashid52.photoeditor.PhotoEditorView;
-import ja.burhanrashid52.photoeditor.TextStyleBuilder;
+import okhttp3.FormBody;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.http.Body;
+import retrofit2.http.Multipart;
+import retrofit2.http.POST;
+import retrofit2.http.Part;
 
 public class FullImageActivity extends AppCompatActivity {
 
     private PhotoEditorView mPhotoEditorView;
     private PhotoEditor mPhotoEditor;
-    private static final int IMAGE_PICK_CODE = 1000;
-    private static final int REQUEST_STORAGE_PERMISSION = 1;
+    private ImageView ivAddImage;
+    private final int REQUEST_GALLERY = 1;
+    private TextView selectedTextView = null;
+    private RecyclerView rvFonts;
+    private FontAdapter fontAdapter;
+    private List<FontModel> fontList;
+    private SharedViewModel sharedViewModel;
 
-    private boolean isCircularCrop = false;
+    private static final String PREFS_NAME = "SavedImagePrefs";
+    private static final String KEY_IMAGE_PATHS = "image_paths";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_full_image);
 
-        ImageView ivAddImage = findViewById(R.id.ivAddImage);
+        rvFonts = findViewById(R.id.rvFonts);
+        rvFonts.setLayoutManager(new LinearLayoutManager(this));
+
+//        ImageView ivUndo = findViewById(R.id.ivUndo);
+//        ImageView ivRedo =  findViewById(R.id.ivRedo);
+        ImageView ivAddText = findViewById(R.id.ivAddText);
         ImageView ivDownload = findViewById(R.id.ivDownload);
+        ImageView ivBack = findViewById(R.id.ivBack);
 
-        ivAddImage.setOnClickListener(v -> openGallery());
         ivDownload.setOnClickListener(v -> {checkPermissionAndSaveImage();});
+        sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+        ivBack.setOnClickListener(v -> {
+            startActivity(new Intent(FullImageActivity.this, MainActivity.class));
+            finish();
         });
+        ivAddText.setOnClickListener(v -> {
+            EditText editText = new EditText(this);
+                new AlertDialog.Builder(this)
+                        .setTitle("Add Text")
+                        .setView(editText)
+                        .setPositiveButton("OK", (dialog, which) -> {
+                            String newText = editText.getText().toString().trim();
+                            if (!newText.isEmpty()) {
+                                addTextToImage(newText, 100, 100, Color.WHITE, Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+                            } else {
+                            }
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+        });
+        ImageView ivChangeFont = findViewById(R.id.ivChangeFont);
+        LinearLayout llFont = findViewById(R.id.llFont);
+        ImageView ivDown2 = findViewById(R.id.ivDown2);
+
+        ivChangeFont.setOnClickListener(v -> {llFont.setVisibility(View.VISIBLE);});
+        ivDown2.setOnClickListener(v -> {llFont.setVisibility(View.GONE);});
+        fontList = new ArrayList<>();
+        fontAdapter = new FontAdapter(this, fontList, font -> {
+            if (selectedTextView != null) {
+                Typeface typeface = Typeface.createFromAsset(getAssets(), "fonts/" + font.getFontName() + ".ttf");
+                selectedTextView.setTypeface(typeface);
+            } else {
+                Toast.makeText(this, "Please select a text box first", Toast.LENGTH_SHORT).show();
+            }
+        });
+        loadFonts();
+        rvFonts.setAdapter(fontAdapter);
+        ImageView ivChangeColor = findViewById(R.id.ivChangeColor);
+        LinearLayout llColor = findViewById(R.id.llColor);
+        ImageView ivDown = findViewById(R.id.ivDown);
+        LinearLayout colorPalette = findViewById(R.id.colorPalette);
+        ivChangeColor.setOnClickListener(v -> {llColor.setVisibility(View.VISIBLE);});
+        ivDown.setOnClickListener(v -> {llColor.setVisibility(View.GONE);});
+        int[] colors = {
+                Color.parseColor("#ffffff"), Color.parseColor("#cccccc"), Color.parseColor("#999999"),
+                Color.parseColor("#666666"), Color.parseColor("#333333"), Color.parseColor("#000000"),
+                Color.parseColor("#ffee90"), Color.parseColor("#ffd700"), Color.parseColor("#daa520"),
+                Color.parseColor("#b8860b"), Color.parseColor("#ccff66"), Color.parseColor("#adff2f"),
+                Color.parseColor("#00fa9a"), Color.parseColor("#00ff7f"), Color.parseColor("#00ff00"),
+                Color.parseColor("#32cd32"), Color.parseColor("#3cb371"), Color.parseColor("#99cccc"),
+                Color.parseColor("#66cccc"), Color.parseColor("#339999"), Color.parseColor("#669999"),
+                Color.parseColor("#006666"), Color.parseColor("#336666"), Color.parseColor("#ffcccc"),
+                Color.parseColor("#ff9999"), Color.parseColor("#ff6666"), Color.parseColor("#ff3333"),
+                Color.parseColor("#ff0033"), Color.parseColor("#cc0033"), Color.parseColor("#66021B")
+        };
+        for (int color : colors) {
+            View colorView = new View(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(25, LinearLayout.LayoutParams.MATCH_PARENT);
+            params.setMargins(0, 0, 0, 0);
+            colorView.setLayoutParams(params);
+            colorView.setBackgroundColor(color);
+
+            colorView.setOnClickListener(v -> {
+                if (selectedTextView != null) {
+                    selectedTextView.setTextColor(color);
+                } else {
+                    Toast.makeText(this, "Please select a text box first", Toast.LENGTH_SHORT).show();
+                }
+            });
+            colorPalette.addView(colorView);
+        }
+        ivAddImage = findViewById(R.id.ivAddImage);
+        ivAddImage.setOnClickListener(v -> openGallery());
 
         mPhotoEditorView = findViewById(R.id.photoEditorView);
-        ImageView ivAddText = findViewById(R.id.ivAddText);
-
-        // Initialize PhotoEditor
-        mPhotoEditor = new PhotoEditor.Builder(this, mPhotoEditorView)
-                .setPinchTextScalable(true) // Enable pinch to zoom for text
-                .build();
-
+        mPhotoEditor = new PhotoEditor.Builder(this, mPhotoEditorView).build();
         String imageUrl = getIntent().getStringExtra("image_url");
-        Glide.with(this).load(imageUrl).into(mPhotoEditorView.getSource());
+        loadImage(imageUrl);
+        fetchUserData();
 
-        ivAddText.setOnClickListener(v -> showAddTextDialog(null, -1, -1, null));
-    }
-
-    private void showAddTextDialog(String existingText, int existingTextSize, int existingTextColor, TextView existingTextView) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(existingText == null ? "Add Text" : "Edit Text");
-
-        LayoutInflater inflater = getLayoutInflater();
-        View dialogView = inflater.inflate(R.layout.dialog_add_text, null);
-        builder.setView(dialogView);
-
-        final EditText input = dialogView.findViewById(R.id.inputText);
-        final TextView previewText = dialogView.findViewById(R.id.previewText);
-        final SeekBar textSizeSeekBar = dialogView.findViewById(R.id.textSizeSeekBar);
-        final SeekBar colorSeekBar = dialogView.findViewById(R.id.colorSeekBar);
-
-        if (existingText != null) {
-            input.setText(existingText);
-            previewText.setText(existingText);
-            textSizeSeekBar.setProgress(existingTextSize > 0 ? existingTextSize : 30); // Default size 30
-            colorSeekBar.setProgress(getSeekBarProgressFromColor(existingTextColor));
-            previewText.setTextSize(existingTextSize);
-            previewText.setTextColor(existingTextColor);
-        }
-
-        textSizeSeekBar.setEnabled(existingText != null);
-        colorSeekBar.setEnabled(existingText != null);
-
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            String userText = input.getText().toString();
-            int textSize = textSizeSeekBar.getProgress();
-            int color = getColorFromSeekBarValue(colorSeekBar.getProgress());
-
-            if (!userText.isEmpty()) {
-                if (existingTextView != null) {
-                    // Update the existing text
-                    existingTextView.setText(userText);
-                    existingTextView.setTextSize(textSize);
-                    existingTextView.setTextColor(color);
-                } else {
-                    // Add new text
-                    addTextToImage(userText, textSize, color);
-                }
-            } else {
-                Toast.makeText(FullImageActivity.this, "Please enter some text", Toast.LENGTH_SHORT).show();
+        findViewById(R.id.main).setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                hideAllIcons();
             }
+            return false;
         });
-
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-
-        input.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                previewText.setText(s.toString());
-                boolean hasText = s.length() > 0;
-                textSizeSeekBar.setEnabled(hasText);
-                colorSeekBar.setEnabled(hasText);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
-
-        textSizeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                previewText.setTextSize(progress);
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        colorSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int color = getColorFromSeekBarValue(progress);
-                previewText.setTextColor(color);
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-
-        builder.show();
     }
-
-    private int getColorFromSeekBarValue(int progress) {
-        if (progress < 100) {
-            return interpolateColor(Color.WHITE, Color.BLACK, progress / 100f);
-        } else if (progress < 200) {
-            return interpolateColor(Color.BLACK, Color.YELLOW, (progress - 100) / 100f);
-        } else if (progress < 300) {
-            return interpolateColor(Color.YELLOW, Color.GREEN, (progress - 200) / 100f);
-        } else if (progress < 400) {
-            return interpolateColor(Color.GREEN, Color.CYAN, (progress - 300) / 100f);
-        } else if (progress < 500) {
-            return interpolateColor(Color.CYAN, Color.BLUE, (progress - 400) / 100f);
-        } else if (progress < 600) {
-            return interpolateColor(Color.BLUE, Color.rgb(0, 51, 102), (progress - 500) / 100f);
-        } else if (progress < 700) {
-            return interpolateColor(Color.rgb(0, 51, 102), Color.rgb(255, 128, 128), (progress - 600) / 100f);
-        } else {
-            return interpolateColor(Color.rgb(255, 128, 128), Color.RED, (progress - 700) / 300f);
-        }
+    private void loadFonts() {
+        fontList.add(new FontModel("arya_regular", "arya_regular"));
+        fontList.add(new FontModel("calibrid", "calibrid"));
+        fontList.add(new FontModel("kanit_bold", "kanit_bold"));
+        fontList.add(new FontModel("kanit_semibolditalic", "kanit_semibolditalic"));
+        fontList.add(new FontModel("lato_regular", "lato_regular"));
+        fontList.add(new FontModel("roboto_black", "roboto_black"));
+        fontList.add(new FontModel("roboto_italic", "roboto_italic"));
+        fontList.add(new FontModel("yatraone_regular", "yatraone_regular"));
+        fontAdapter.notifyDataSetChanged();
     }
-
-    private int interpolateColor(int color1, int color2, float fraction) {
-        fraction = Math.min(1f, Math.max(0f, fraction)); // Clamp fraction between 0 and 1
-        int red1 = Color.red(color1);
-        int green1 = Color.green(color1);
-        int blue1 = Color.blue(color1);
-        int red2 = Color.red(color2);
-        int green2 = Color.green(color2);
-        int blue2 = Color.blue(color2);
-
-        int red = (int) (red1 + (red2 - red1) * fraction);
-        int green = (int) (green1 + (green2 - green1) * fraction);
-        int blue = (int) (blue1 + (blue2 - blue1) * fraction);
-
-        return Color.rgb(red, green, blue);
-    }
-
-    private int getSeekBarProgressFromColor(int color) {
-        return 0;
-    }
-
-    private void addTextToImage(String text, int textSize, int textColor) {
-        TextStyleBuilder textStyleBuilder = new TextStyleBuilder();
-        textStyleBuilder.withTextColor(textColor);
-        textStyleBuilder.withTextSize((float) textSize);
-
-        mPhotoEditor.addText(text, textStyleBuilder);
-
-        View addedTextView = mPhotoEditorView.getChildAt(mPhotoEditorView.getChildCount() - 1);
-
-        if (addedTextView instanceof TextView) {
-            TextView textView = (TextView) addedTextView;
-            textView.setOnClickListener(v -> {
-                String currentText = textView.getText().toString();
-                int currentTextColor = textView.getCurrentTextColor();
-                float currentTextSize = textView.getTextSize();
-
-                showAddTextDialog(currentText, (int) currentTextSize, currentTextColor, textView);
-            });
-
-            textView.setFocusable(true);
-            textView.setClickable(true);
-        }
-    }
-
     private void openGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK);
-        intent.setType("image/*");
-        startActivityForResult(intent, IMAGE_PICK_CODE);
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_GALLERY);
     }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK) {
-            if (requestCode == IMAGE_PICK_CODE) {
-                Uri selectedImageUri = data.getData();
-                if (selectedImageUri != null) {
-                    showShapeSelectionDialog(selectedImageUri);
-                } else {
-                    Toast.makeText(this, "Failed to get image", Toast.LENGTH_SHORT).show();
-                }
-            } else if (requestCode == UCrop.REQUEST_CROP) {
-                final Uri resultUri = UCrop.getOutput(data);
-                if (resultUri != null) {
-                    clearGalleryOverlays(); // Clear any existing overlays
-                    overlayCroppedImage(resultUri, isCircularCrop); // Use the member variable
-                }
-            } else if (requestCode == UCrop.RESULT_ERROR) {
-                final Throwable cropError = UCrop.getError(data);
-                if (cropError != null) {
-                    Toast.makeText(this, "Crop error: " + cropError.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            }
+        if (requestCode == REQUEST_GALLERY && resultCode == RESULT_OK && data != null) {
+            Uri imageUri = data.getData();
+            startCrop(imageUri);
+        } else if (requestCode == UCrop.REQUEST_CROP && resultCode == RESULT_OK) {
+            Uri croppedUri = UCrop.getOutput(data);
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Remove Background")
+                    .setMessage("Do you want to remove the background of this image?")
+                    .setPositiveButton("Yes", (dialog, which) -> removeBackground(croppedUri))
+                    .setNegativeButton("No", (dialog, which) -> addRoundedCornersToImage(croppedUri))
+                    .show();
         }
     }
+    private void addRoundedCornersToImage(Uri imageUri) {
+        try {
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
 
-    private void showShapeSelectionDialog(Uri imageUri) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Choose Image Shape");
+            RoundedBitmapDrawable roundedBitmapDrawable = RoundedBitmapDrawableFactory.create(getResources(), bitmap);
+            roundedBitmapDrawable.setCornerRadius(Math.min(bitmap.getWidth(), bitmap.getHeight()) / 1.0f); // Circular effect
+            ImageView overlayImageView = new ImageView(this);
+            overlayImageView.setImageDrawable(roundedBitmapDrawable);
 
-        String[] options = {"Circular", "Square"};
+            int overlayWidth = mPhotoEditorView.getWidth() / 4;
+            int overlayHeight = (int) ((float) bitmap.getHeight() / bitmap.getWidth() * overlayWidth);
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(overlayWidth, overlayHeight);
+            params.addRule(RelativeLayout.CENTER_IN_PARENT);
+            overlayImageView.setLayoutParams(params);
+            mPhotoEditorView.addView(overlayImageView);
+            setupTouchListeners(overlayImageView);
 
-        builder.setItems(options, (dialog, which) -> {
-            Uri destinationUri = Uri.fromFile(new File(getCacheDir(), "cropped_image_" + System.currentTimeMillis() + ".jpg"));
-
-            isCircularCrop = (which == 0);
-
-            UCrop.Options option = new UCrop.Options();
-
-            if (isCircularCrop) {
-                option.setCircleDimmedLayer(true);
-                option.setShowCropFrame(false);
-                option.setShowCropGrid(false);
-            } else {
-                option.setCircleDimmedLayer(false);
-                option.setShowCropFrame(true);
-                option.setShowCropGrid(true);
-            }
-
-            UCrop.of(imageUri, destinationUri)
-                    .withAspectRatio(1, 1)
-                    .withMaxResultSize(1080, 1080)
-                    .withOptions(option)
-                    .start(this);
-        });
-
-        builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
-
-        builder.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error loading image", Toast.LENGTH_SHORT).show();
+        }
     }
+    private void startCrop(Uri uri) {
+        UCrop.Options options = new UCrop.Options();
+        options.setCompressionQuality(80);
+        options.setFreeStyleCropEnabled(true);
+        UCrop.of(uri, Uri.fromFile(new File(getCacheDir(), "cropped_image.jpg")))
+                .withOptions(options)
+                .start(this);
+    }
+    private void fetchUserData() {
+        SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        int userId = sharedPreferences.getInt("user_id", -1);
 
-    private void overlayCroppedImage(Uri imageUri, boolean isCircular) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://postermaking.deifichrservices.com/api/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        ApiService apiService = retrofit.create(ApiService.class);
+
+        RequestBody requestBody = new FormBody.Builder()
+                .add("user_id", String.valueOf(userId))
+                .build();
+
+        Call<UserResponse> call = apiService.getUserData(requestBody);
+        call.enqueue(new Callback<UserResponse>() {
+            @Override
+            public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    UserResponse userResponse = response.body();
+                    if (userResponse.getStatus() == 1 && userResponse.getData() != null && !userResponse.getData().isEmpty()) {
+                        User user = userResponse.getData().get(0);
+                        addUserDetailsToImage(user);
+                    } else {
+                        Toast.makeText(FullImageActivity.this, "No user data found", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Log.e("API", "Response Error: " + response.message());
+                }
+            }
+            @Override
+            public void onFailure(Call<UserResponse> call, Throwable t) {
+                Log.e("API", "Request Failed: " + t.getMessage());
+                Toast.makeText(FullImageActivity.this, "Failed to load data", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    private void loadImage(String imageUrl) {
         Glide.with(this)
-                .load(imageUri)
+                .load(imageUrl)
                 .into(new CustomTarget<Drawable>() {
                     @Override
                     public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
-                        ShapeableImageView overlayImageView = new ShapeableImageView(FullImageActivity.this);
-
-                        overlayImageView.setImageDrawable(resource);
-                        overlayImageView.setLayoutParams(new ViewGroup.LayoutParams(200, 200));
-
-                        if (isCircular) {
-                            overlayImageView.setShapeAppearanceModel(
-                                    overlayImageView.getShapeAppearanceModel()
-                                            .toBuilder()
-                                            .setAllCorners(com.google.android.material.shape.CornerFamily.ROUNDED, 100f) // Full circle
-                                            .build()
-                            );
-                        }
-                        else
-                        {
-                            overlayImageView.setShapeAppearanceModel(
-                                    overlayImageView.getShapeAppearanceModel()
-                                            .toBuilder()
-                                            .setAllCorners(com.google.android.material.shape.CornerFamily.ROUNDED, 0f) // No rounding
-                                            .build()
-                            );
-                        }
-
-                        overlayImageView.setTag("gallery_overlay");
-
-                        // Initialize touch and scaling listeners
-                        overlayImageView.setOnTouchListener(new View.OnTouchListener() {
-                            float dX, dY;
-                            ScaleGestureDetector scaleGestureDetector;
-                            float scale = 1f;
-
-                            {
-                                scaleGestureDetector = new ScaleGestureDetector(FullImageActivity.this, new ScaleListener(overlayImageView));
-                            }
-
-                            @Override
-                            public boolean onTouch(View view, MotionEvent event) {
-                                scaleGestureDetector.onTouchEvent(event);
-
-                                switch (event.getAction() & MotionEvent.ACTION_MASK) {
-                                    case MotionEvent.ACTION_DOWN:
-                                        dX = view.getX() - event.getRawX();
-                                        dY = view.getY() - event.getRawY();
-                                        break;
-                                    case MotionEvent.ACTION_MOVE:
-                                        view.animate()
-                                                .x(event.getRawX() + dX)
-                                                .y(event.getRawY() + dY)
-                                                .setDuration(0)
-                                                .start();
-                                        break;
-                                    case MotionEvent.ACTION_UP:
-                                        view.setOnClickListener(v -> {
-                                            // Remove view on click
-                                            ((ViewGroup) v.getParent()).removeView(v);
-                                        });
-                                        break;
-                                    default:
-                                        return false;
-                                }
-                                return true;
-                            }
-
-                            class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-                                private final View view;
-
-                                ScaleListener(View view) {
-                                    this.view = view;
-                                }
-
-                                @Override
-                                public boolean onScale(ScaleGestureDetector detector) {
-                                    scale *= detector.getScaleFactor();
-                                    scale = Math.max(0.1f, Math.min(scale, 5.0f)); // Limit scale range
-                                    view.setScaleX(scale);
-                                    view.setScaleY(scale);
-                                    return true;
-                                }
-                            }
-                        });
-
-                        mPhotoEditorView.addView(overlayImageView);
+                        mPhotoEditorView.getSource().setImageDrawable(resource);
                     }
 
                     @Override
                     public void onLoadCleared(@Nullable Drawable placeholder) {
-                        // Handle placeholder if needed
                     }
                 });
     }
+    private void addUserDetailsToImage(User user) {
+        int textColor = Color.WHITE;
+        Typeface typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD);
+        addTextToImage("" + user.getName(), 50, 600, textColor, typeface);
+        addTextToImage("" + user.getDesignation(), 50, 640, textColor, typeface);
+        addTextToImage("" + user.getPhone(), 50, 680, textColor, typeface);
+        addTextToImage("" + user.getCompany_name(), 400, 680, textColor, typeface);
+    }
+    private void addTextToImage(String text, int x, int y, int textColor, Typeface typeface) {
+        View container = getLayoutInflater().inflate(R.layout.text_box_layout, mPhotoEditorView, false);
 
-    private void clearGalleryOverlays() {
-        for (int i = mPhotoEditorView.getChildCount() - 1; i >= 0; i--) {
+        TextView textView = container.findViewById(R.id.textBoxText);
+        View deleteIcon = container.findViewById(R.id.deleteIcon);
+        View resizeIcon = container.findViewById(R.id.resizeIcon);
+        RelativeLayout textBoxLayout = container.findViewById(R.id.textBoxLayout);
+
+        textView.setText(text);
+        textView.setTextColor(textColor);
+        textView.setTypeface(typeface);
+        deleteIcon.setVisibility(View.GONE);
+        resizeIcon.setVisibility(View.GONE);
+        textBoxLayout.setBackgroundColor(Color.TRANSPARENT);
+
+        RelativeLayout.LayoutParams containerParams = new RelativeLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        containerParams.leftMargin = x;
+        containerParams.topMargin = y;
+        mPhotoEditorView.addView(container, containerParams);
+
+        deleteIcon.setOnClickListener(v -> mPhotoEditorView.removeView(container));
+        textView.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (selectedTextView != null) {
+                    selectedTextView.setBackground(null);
+                }
+                selectedTextView = textView;
+
+                deleteIcon.setVisibility(View.VISIBLE);
+                resizeIcon.setVisibility(View.VISIBLE);
+                textBoxLayout.setBackgroundResource(R.drawable.border);
+            }
+            return true;
+        });
+        ImageView ivEditText = findViewById(R.id.ivEditText);
+        ivEditText.setOnClickListener(v -> {
+            if (selectedTextView != null) {
+                showEditTextDialog();
+            }
+            else{
+                Toast.makeText(this, "Please select any text.", Toast.LENGTH_SHORT).show();
+            }
+        });
+        resizeIcon.setOnTouchListener(new View.OnTouchListener() {
+            private float initialY;
+            private float initialTextSize;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        initialY = event.getRawY();
+                        initialTextSize = textView.getTextSize();
+                        break;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float deltaY = event.getRawY() - initialY;
+                        float newSize = initialTextSize + deltaY / 10;
+                        if (newSize > 10 && newSize < 100) {
+                            textView.setTextSize(newSize / getResources().getDisplayMetrics().scaledDensity);
+                        }
+                        break;
+                }
+                return true;
+            }
+        });
+        container.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                if (deleteIcon.getVisibility() == View.GONE) {
+                    deleteIcon.setVisibility(View.VISIBLE);
+                    resizeIcon.setVisibility(View.VISIBLE);
+                    textBoxLayout.setBackgroundColor(Color.TRANSPARENT);
+                } else {
+                    deleteIcon.setVisibility(View.GONE);
+                    resizeIcon.setVisibility(View.GONE);
+                    textBoxLayout.setBackgroundColor(Color.TRANSPARENT);
+                }
+            }
+            return true;
+        });
+        container.setOnTouchListener(new View.OnTouchListener() {
+            private float dX, dY;
+            private int lastAction;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                Drawable drawable = mPhotoEditorView.getSource().getDrawable();
+                if (drawable == null) return false;
+
+                int intrinsicWidth = drawable.getIntrinsicWidth();
+                int intrinsicHeight = drawable.getIntrinsicHeight();
+                float scaleX = (float) mPhotoEditorView.getWidth() / (float) intrinsicWidth;
+                float scaleY = (float) mPhotoEditorView.getHeight() / (float) intrinsicHeight;
+                float scale = Math.min(scaleX, scaleY);
+                int actualImageWidth = (int) (intrinsicWidth * scale);
+                int actualImageHeight = (int) (intrinsicHeight * scale);
+                int offsetX = (mPhotoEditorView.getWidth() - actualImageWidth) / 2;
+                int offsetY = (mPhotoEditorView.getHeight() - actualImageHeight) / 2;
+                int viewWidth = v.getWidth();
+                int viewHeight = v.getHeight();
+
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = v.getX() - event.getRawX();
+                        dY = v.getY() - event.getRawY();
+                        lastAction = MotionEvent.ACTION_DOWN;
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        float newX = event.getRawX() + dX;
+                        float newY = event.getRawY() + dY;
+                        if (newX < offsetX) newX = offsetX;
+                        if (newX + viewWidth > offsetX + actualImageWidth) newX = offsetX + actualImageWidth - viewWidth;
+                        if (newY < offsetY) newY = offsetY;
+                        if (newY + viewHeight > offsetY + actualImageHeight) newY = offsetY + actualImageHeight - viewHeight;
+                        v.animate().x(newX).y(newY).setDuration(0).start();
+                        lastAction = MotionEvent.ACTION_MOVE;
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (lastAction == MotionEvent.ACTION_DOWN) {
+                        }
+                        break;
+                    default:
+                        return false;
+                }
+                return true;
+            }
+        });
+    }
+    private void hideAllIcons() {
+        for (int i = 0; i < mPhotoEditorView.getChildCount(); i++) {
             View child = mPhotoEditorView.getChildAt(i);
-            if ("gallery_overlay".equals(child.getTag())) {
-                mPhotoEditorView.removeView(child);
+            if (child instanceof RelativeLayout) {
+                View deleteIcon = child.findViewById(R.id.deleteIcon);
+                View resizeIcon = child.findViewById(R.id.resizeIcon);
+                RelativeLayout textBoxLayout = child.findViewById(R.id.textBoxLayout);
+                if (deleteIcon != null && resizeIcon != null) {
+                    deleteIcon.setVisibility(View.GONE);
+                    resizeIcon.setVisibility(View.GONE);
+                    textBoxLayout.setBackgroundColor(Color.TRANSPARENT);
+                }
             }
         }
+        selectedTextView = null;
     }
+    public interface RemoveBgApiService {
+        @Multipart
+        @POST("removebg")
+        Call<ResponseBody> removeBackground(
+                @Part MultipartBody.Part image,
+                @Part("size") RequestBody size
+        );
+    }
+    public static class RetrofitClient {
+        private static final String BASE_URL = "https://api.remove.bg/v1.0/";
+        private static Retrofit retrofit;
 
+        public static RemoveBgApiService getRemoveBgApiService() {
+            if (retrofit == null) {
+                HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+                logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+                OkHttpClient client = new OkHttpClient.Builder()
+                        .addInterceptor(logging)
+                        .addInterceptor(chain -> {
+                            return chain.proceed(chain.request().newBuilder()
+                                    .addHeader("X-Api-Key", "4ogFA9kxNSw8aPx1RVoUbhDE") // Replace with your Remove.bg API key
+                                    .build());
+                        })
+                        .build();
+
+                retrofit = new Retrofit.Builder()
+                        .baseUrl(BASE_URL)
+                        .client(client)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build();
+            }
+            return retrofit.create(RemoveBgApiService.class);
+        }
+    }
+    private void removeBackground(Uri imageUri) {
+        File imageFile = new File(imageUri.getPath());
+        if (!imageFile.exists()) {
+            Log.e("RemoveBg", "File does not exist");
+            return;
+        }
+        RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), imageFile);
+        MultipartBody.Part body = MultipartBody.Part.createFormData("image_file", imageFile.getName(), requestFile);
+        RequestBody size = RequestBody.create(MediaType.parse("text/plain"), "auto");
+        RemoveBgApiService apiService = RetrofitClient.getRemoveBgApiService();
+
+        Call<ResponseBody> call = apiService.removeBackground(body, size);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        byte[] imageBytes = response.body().bytes();
+                        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+                        ImageView overlayImageView = new ImageView(FullImageActivity.this);
+                        overlayImageView.setImageBitmap(bitmap);
+
+                        int overlayWidth = mPhotoEditorView.getWidth() / 4;
+                        int overlayHeight = (int) ((float) bitmap.getHeight() / bitmap.getWidth() * overlayWidth);
+                        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(overlayWidth, overlayHeight);
+
+                        params.addRule(RelativeLayout.CENTER_IN_PARENT);
+                        overlayImageView.setLayoutParams(params);
+                        mPhotoEditorView.addView(overlayImageView);
+                        setupTouchListeners(overlayImageView);
+
+                        Toast.makeText(FullImageActivity.this, "Background removed!", Toast.LENGTH_SHORT).show();
+                    } catch (IOException e) {
+                        Log.e("RemoveBg", "Error processing response: " + e.getMessage());
+                    }
+                } else {
+                    Log.e("RemoveBg", "Failed response: " + response.message());
+                    Toast.makeText(FullImageActivity.this, "Failed to remove background", Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("RemoveBg", "API call failed: " + t.getMessage());
+                Toast.makeText(FullImageActivity.this, "Failed to connect to Remove.bg", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    private void setupTouchListeners(ImageView overlayImageView) {
+        ScaleGestureDetector scaleGestureDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                float scaleFactor = detector.getScaleFactor();
+                overlayImageView.setScaleX(overlayImageView.getScaleX() * scaleFactor);
+                overlayImageView.setScaleY(overlayImageView.getScaleY() * scaleFactor);
+                return true;
+            }
+        });
+        overlayImageView.setOnTouchListener(new View.OnTouchListener() {
+            private float dX, dY;
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                scaleGestureDetector.onTouchEvent(event);
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = v.getX() - event.getRawX();
+                        dY = v.getY() - event.getRawY();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        v.animate()
+                                .x(event.getRawX() + dX)
+                                .y(event.getRawY() + dY)
+                                .setDuration(0)
+                                .start();
+                        break;
+                    default:
+                        return false;
+                }
+                return true;
+            }
+        });
+    }
+    public interface ApiService {
+        @POST("user/get-user")
+        Call<UserResponse> getUserData(@Body RequestBody requestBody);
+    }
+    private void showEditTextDialog() {
+        EditText editText = new EditText(this);
+        editText.setText(selectedTextView.getText().toString());
+
+        new AlertDialog.Builder(this)
+                .setTitle("Edit Text")
+                .setView(editText)
+                .setPositiveButton("OK", (dialog, which) -> {
+                    selectedTextView.setText(editText.getText().toString());
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
     private void checkPermissionAndSaveImage() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_STORAGE_PERMISSION);
-            } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(FullImageActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                 saveImageToGallery();
+            } else {
+                ActivityCompat.requestPermissions(FullImageActivity.this, new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_GALLERY);
             }
         } else {
             saveImageToGallery();
         }
     }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_STORAGE_PERMISSION) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_GALLERY) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 saveImageToGallery();
             } else {
@@ -441,11 +615,30 @@ public class FullImageActivity extends AppCompatActivity {
             }
         }
     }
-
     private void saveImageToGallery() {
         String appName = getString(R.string.app_name);
-        String fileName = "IMG_" + System.currentTimeMillis() + ".jpg";
-
+        String fileName = "IMG_" + System.currentTimeMillis() + ".jpeg";
+        String filePath = getFilesDir() + "/edited_image.jpeg";
+        try {
+            mPhotoEditor.saveAsFile(filePath, new PhotoEditor.OnSaveListener() {
+                @Override
+                public void onSuccess(@NonNull String s) {
+                    String savedImagePath = saveImageToExternalStorage(s, appName, fileName);
+                    if (savedImagePath != null) {
+                        saveImagePathToPrefs(savedImagePath);
+                    }
+                }
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Toast.makeText(FullImageActivity.this, "Failed to save image: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+        } catch (Exception e) {
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    private String saveImageToExternalStorage(String imagePath, String appName, String fileName) {
+        String savedImagePath = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContentValues values = new ContentValues();
             values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
@@ -454,50 +647,30 @@ public class FullImageActivity extends AppCompatActivity {
 
             Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
             if (uri != null) {
-                // Save image using PhotoEditor
-                mPhotoEditor.saveAsFile(uri.getPath(), new PhotoEditor.OnSaveListener() {
-                    @Override
-                    public void onSuccess(@NonNull String imagePath) {
-                        Toast.makeText(FullImageActivity.this, "Image saved", Toast.LENGTH_SHORT).show();
-
-                        // Make the image visible in the user's gallery
-                        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                        mediaScanIntent.setData(uri);
-                        sendBroadcast(mediaScanIntent);
+                try (OutputStream out = getContentResolver().openOutputStream(uri);
+                     FileInputStream fis = new FileInputStream(imagePath)) {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = fis.read(buffer)) > 0) {
+                        out.write(buffer, 0, len);
                     }
-
-                    @Override
-                    public void onFailure(@NonNull Exception exception) {
-                        Toast.makeText(FullImageActivity.this, "Failed to save image", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        } else {
-            // Fallback for Android 9 (API 28) and below
-            File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), appName);
-            if (!folder.exists()) {
-                folder.mkdirs(); // Create the folder if it doesn't exist
-            }
-
-            File file = new File(folder, fileName);
-
-            mPhotoEditor.saveAsFile(file.getAbsolutePath(), new PhotoEditor.OnSaveListener() {
-                @Override
-                public void onSuccess(@NonNull String filePath) {
-                    Toast.makeText(FullImageActivity.this, "Image saved", Toast.LENGTH_SHORT).show();
-
-                    // Make the image visible in the user's gallery
-                    Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                    Uri contentUri = Uri.fromFile(file);
-                    mediaScanIntent.setData(contentUri);
-                    sendBroadcast(mediaScanIntent);
+                    savedImagePath = uri.toString();
+                    Toast.makeText(this, "Image saved to gallery", Toast.LENGTH_SHORT).show();
+                } catch (IOException e) {
+                    Toast.makeText(this, "Error saving image: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
-
-                @Override
-                public void onFailure(@NonNull Exception exception) {
-                    Toast.makeText(FullImageActivity.this, "Failed to save image", Toast.LENGTH_SHORT).show();
-                }
-            });
+            }
         }
+        return savedImagePath;
+    }
+    private void saveImagePathToPrefs(String imagePath) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String existingPaths = prefs.getString(KEY_IMAGE_PATHS, "");
+        if (existingPaths.isEmpty()) {
+            existingPaths = imagePath;
+        } else {
+            existingPaths += "," + imagePath;
+        }
+        prefs.edit().putString(KEY_IMAGE_PATHS, existingPaths).apply();
     }
 }

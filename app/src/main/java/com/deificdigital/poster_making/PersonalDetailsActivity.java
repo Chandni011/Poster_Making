@@ -1,6 +1,7 @@
 package com.deificdigital.poster_making;
 
 import android.content.Intent;
+import android.content.SharedPreferences; // Import SharedPreferences
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -42,7 +43,7 @@ public class PersonalDetailsActivity extends AppCompatActivity {
     private static final int PICK_IMAGE = 1;
 
     private ImageView ivDp;
-    private Uri profilePicBase64; // Variable to hold Base64 string
+    private String profilePicBase64;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +57,8 @@ public class PersonalDetailsActivity extends AppCompatActivity {
         EditText etNumber = findViewById(R.id.etNumber);
         EditText etName = findViewById(R.id.etName);
         EditText etEmail = findViewById(R.id.etEmail);
+        EditText etDesignation = findViewById(R.id.etDesignation);
+        EditText etCompanyName = findViewById(R.id.etCompanyName);
 
         etEmail.setEnabled(false);
 
@@ -65,11 +68,11 @@ public class PersonalDetailsActivity extends AppCompatActivity {
         etName.setText(name);
         etEmail.setText(email);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+//            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+//            return insets;
+//        });
 
         rlProfilePhoto.setOnClickListener(v -> showImagePickerDialog());
 
@@ -77,8 +80,11 @@ public class PersonalDetailsActivity extends AppCompatActivity {
             String Name = etName.getText().toString().trim();
             String Email = etEmail.getText().toString().trim();
             String number = etNumber.getText().toString().trim();
+            String designation = etDesignation.getText().toString().trim();
+            String companyName = etCompanyName.getText().toString().trim();
+            String login_with = "gmail"; // Example value
+            String profile_pic = profilePicBase64 != null ? profilePicBase64 : "base64_string_of_image"; // Use Base64 string
 
-            // Validation
             if (Name.isEmpty()) {
                 etName.setError("Name is required");
                 etName.requestFocus();
@@ -97,47 +103,42 @@ public class PersonalDetailsActivity extends AppCompatActivity {
                 return;
             }
 
-            // Create a user model with login_with and profile_pic
-            login_model user = new login_model(Name, Email, number, "1", profilePicBase64); // Pass the Base64 string
+            login_model user = new login_model(name, email, number, login_with, profile_pic);
+            user.setCompanyName(companyName);
+            user.setDesignation(designation);
 
-            // Make API call to send the data
             sendUserData(user);
-
-            // Optional: Navigate to another activity
-            Intent intent = new Intent(this, MainActivity.class);
-            intent.putExtra("name", Name);
-            intent.putExtra("email", Email);
-            intent.putExtra("number", number);
-            startActivity(intent);
-            finish();
         });
     }
 
     private void sendUserData(login_model user) {
-
-        if (profilePicBase64 == null) {
-            Log.e("API", "Profile picture is null");
-            return;
-        }
-        // Initialize Retrofit
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/api/") // Replace with your base URL
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
-        // Create API service
         ApiService apiService = retrofit.create(ApiService.class);
 
-        // Call API
         Call<ResponseModel> call = apiService.saveUserData(user);
         call.enqueue(new Callback<ResponseModel>() {
             @Override
             public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    // Handle success response
                     ResponseModel responseModel = response.body();
                     Log.d("API", "User created: " + responseModel.getMessage());
                     Log.d("API", "User ID: " + responseModel.getUser_id());
+
+                    int userId = responseModel.getUser_id();
+                    SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                    SharedPreferences.Editor editor = sharedPreferences.edit();
+                    editor.putInt("user_id", userId);
+                    editor.apply();
+
+                    Log.d("API", "User ID saved: " + userId); // Log saved ID for debugging
+
+                    Intent intent = new Intent(PersonalDetailsActivity.this, MainActivity.class);
+                    startActivity(intent);
+                    finish();
                 } else {
                     Log.e("API", "Response Error: " + response.message());
                 }
@@ -145,15 +146,13 @@ public class PersonalDetailsActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<ResponseModel> call, Throwable t) {
-                // Handle failure
                 Log.e("API", "Request Failed: " + t.getMessage());
             }
         });
     }
 
-    // Define your API interface
     public interface ApiService {
-        @POST("user/store") // Replace with your actual endpoint
+        @POST("user/store")
         Call<ResponseModel> saveUserData(@Body login_model user);
     }
 
@@ -190,11 +189,11 @@ public class PersonalDetailsActivity extends AppCompatActivity {
 
         if (resultCode == RESULT_OK && requestCode == PICK_IMAGE && data != null) {
             Uri selectedImage = data.getData();
-            profilePicBase64 = Uri.parse(convertImageToBase64(selectedImage)); // Convert and store Base64
+            profilePicBase64 = convertImageToBase64(selectedImage);
             Glide.with(this)
                     .load(selectedImage)
-                    .apply(RequestOptions.circleCropTransform()) // Apply circular crop
-                    .into(ivDp); // Set the image to ImageView
+                    .apply(RequestOptions.circleCropTransform())
+                    .into(ivDp);
         }
     }
 }

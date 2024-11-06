@@ -162,7 +162,7 @@
                 android:layout_height="wrap_content"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/etNumber"
-                android:text="Personal Designation"
+                android:text="Designation"
                 android:fontFamily="@font/poppins_medium"
                 android:layout_marginStart="10dp"
                 android:layout_marginTop="5dp"/>
@@ -177,7 +177,30 @@
                 android:fontFamily="@font/poppins_medium"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:hint="City or Village"/>
+                android:hint="Your Profession"/>
+
+            <TextView
+                android:id="@+id/tvCompanyName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/etNumber"
+                android:text="Cmpany Name"
+                android:fontFamily="@font/poppins_medium"
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="5dp"/>
+
+            <EditText
+                android:id="@+id/etCompanyName"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                app:layout_constraintTop_toBottomOf="@id/tvDesignation"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:fontFamily="@font/poppins_medium"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:hint="Company Name"/>
 
             <TextView
                 android:id="@+id/tvReferCode"
