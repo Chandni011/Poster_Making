@@ -1,7 +1,12 @@
 package com.deificdigital.poster_making.fragments;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +31,8 @@ import com.deificdigital.poster_making.models.ImageData;
 import com.deificdigital.poster_making.responses.CategoryResponse;
 import com.deificdigital.poster_making.responses.CustomResponse;
 import com.deificdigital.poster_making.responses.NewestResponse;
+import com.facebook.shimmer.Shimmer;
+import com.facebook.shimmer.ShimmerFrameLayout;
 
 import java.util.List;
 
@@ -41,6 +48,7 @@ import retrofit2.http.GET;
 public class HomeFragment extends Fragment {
 
     private ViewPager2 viewPager;
+
     private ViewPagerAdapter pagerAdapter;
     private Handler sliderHandler;
     private Runnable sliderRunnable;
@@ -65,21 +73,39 @@ public class HomeFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
         newestRecyclerView = view.findViewById(R.id.rvNewest);
+        ShimmerFrameLayout shimmerFrameLayoutUpcoming = view.findViewById(R.id.shimmerFrameLayoutUpcoming);
+        ShimmerFrameLayout shimmerFrameLayoutCustom = view.findViewById(R.id.shimmerFrameLayoutCustom);
+        ShimmerFrameLayout shimmerFrameLayoutNewest = view.findViewById(R.id.shimmerFrameLayoutNewest);
+        ShimmerFrameLayout shimmerFrameLayoutViewPager = view.findViewById(R.id.shimmerFrameLayoutCustom);
         newestRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3, GridLayoutManager.VERTICAL, false));
 
-        fetchPosts();
+        fetchPosts(shimmerFrameLayoutNewest); // fetched for newest section
 
         viewPager = view.findViewById(R.id.viewPager);
-        fetchImages();
+        ShimmerFrameLayout shimmerFrameLayoutViewPager2 = view.findViewById(R.id.shimmer_view_container);
+        fetchImages(shimmerFrameLayoutViewPager2); // fetched for viewpager section
 
         recyclerView = view.findViewById(R.id.rvUpcoming);
         recyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 1, GridLayoutManager.HORIZONTAL, false));
 
-        fetchCategories();
+        fetchCategories(shimmerFrameLayoutUpcoming); // fetched for upcoming section-----
 
         customRecyclerView = view.findViewById(R.id.rvCustom);
         customRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 1, GridLayoutManager.HORIZONTAL, false));
 
+        fetchCustom(shimmerFrameLayoutCustom); // fetched for custom section-----
+
+        return view;
+    }
+
+    private void fetchCustom(ShimmerFrameLayout shimmerFrameLayoutCustom) {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                shimmerFrameLayoutCustom.startShimmer();
+            }
+        }, 5000);
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/") // Base URL
                 .addConverterFactory(GsonConverterFactory.create())
@@ -92,6 +118,8 @@ public class HomeFragment extends Fragment {
             @Override
             public void onResponse(Call<CustomResponse> call, Response<CustomResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    shimmerFrameLayoutCustom.stopShimmer();
+                    shimmerFrameLayoutCustom.setVisibility(View.GONE);
                     List<CustomModel> dataList = response.body().getData();
                     customAdapter = new CustomAdapter(getContext(), dataList);
                     customRecyclerView.setAdapter(customAdapter);
@@ -107,10 +135,17 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        return view;
     }
 
-    private void fetchCategories() {
+    private void fetchCategories(ShimmerFrameLayout shimmerFrameLayoutUpcoming) {
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                shimmerFrameLayoutUpcoming.startShimmer();
+            }
+        }, 5000);
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/")
                 .addConverterFactory(GsonConverterFactory.create())
@@ -122,6 +157,8 @@ public class HomeFragment extends Fragment {
         call.enqueue(new Callback<CategoryResponse>() {
             @Override
             public void onResponse(Call<CategoryResponse> call, Response<CategoryResponse> response) {
+                shimmerFrameLayoutUpcoming.stopShimmer();
+                shimmerFrameLayoutUpcoming.setVisibility(View.GONE);
                 if (response.isSuccessful() && response.body() != null) {
                     List<Category> categories = response.body().getData();
                     adapter = new CategoryAdapter(getActivity(), categories);
@@ -136,7 +173,17 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void fetchImages() {
+    private void fetchImages(ShimmerFrameLayout shimmerFrameLayoutViewPager) { // viewpager section
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                shimmerFrameLayoutViewPager.startShimmer();
+            }
+        }, 5000);
+
+
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/")
                 .addConverterFactory(GsonConverterFactory.create())
@@ -148,7 +195,11 @@ public class HomeFragment extends Fragment {
         call.enqueue(new Callback<ApiResponse>() {
             @Override
             public void onResponse(Call<ApiResponse> call, Response<ApiResponse> response) {
+
                 if (response.isSuccessful() && response.body() != null) {
+                    viewPager.setVisibility(View.VISIBLE);
+                    shimmerFrameLayoutViewPager.stopShimmer();
+                    shimmerFrameLayoutViewPager.setVisibility(View.GONE);
                     List<ImageData> images = response.body().getData();
                     pagerAdapter = new ViewPagerAdapter(images);
                     viewPager.setAdapter(pagerAdapter);
@@ -163,7 +214,24 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void fetchPosts() {
+    private boolean checkInternetConnection(Context context) {
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null) {
+            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+            return activeNetwork != null && activeNetwork.isConnected();
+        }
+        return false;
+    }
+
+    private void fetchPosts(ShimmerFrameLayout shimmerFrameLayoutNewest) {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                shimmerFrameLayoutNewest.startShimmer();
+            }
+        }, 5000);
+
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/")
                 .addConverterFactory(GsonConverterFactory.create())
@@ -175,6 +243,8 @@ public class HomeFragment extends Fragment {
             @Override
             public void onResponse(Call<NewestResponse> call, Response<NewestResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    shimmerFrameLayoutNewest.stopShimmer();
+                    shimmerFrameLayoutNewest.setVisibility(View.GONE);
                     List<NewestModel> postList = response.body().getData();
 
                     for (NewestModel post : postList) {
@@ -212,7 +282,13 @@ public class HomeFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        sliderHandler.removeCallbacks(sliderRunnable);
+        if(checkInternetConnection(getContext()) == false) {
+            Toast.makeText(getContext(), "No Internet Connection", Toast.LENGTH_SHORT).show();
+        }
+        else {
+            sliderHandler.removeCallbacks(sliderRunnable);
+        }
+
     }
 
     @Override
@@ -239,7 +315,8 @@ public class HomeFragment extends Fragment {
     }
 
     public interface ApiServiceCustom {
-        @GET("api/custom-category") // Replace with the actual endpoint
+        @GET("api/custom-category")
+            // Replace with the actual endpoint
         Call<CustomResponse> fetchCategories();
     }
 }
