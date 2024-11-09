@@ -22,6 +22,15 @@
         android:theme="@style/Theme.Poster_Making"
         tools:targetApi="31">
         <activity
+            android:name=".PoliticalSeeallActivity"
+            android:exported="false" />
+        <activity
+            android:name=".CustomSeeAllActivity"
+            android:exported="false" />
+        <activity
+            android:name=".UpcomingSeeAllActivity"
+            android:exported="false" />
+        <activity
             android:name=".RefundActivity"
             android:exported="false" />
         <activity

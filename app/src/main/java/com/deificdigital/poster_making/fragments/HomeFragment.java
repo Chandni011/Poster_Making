@@ -1,11 +1,13 @@
 package com.deificdigital.poster_making.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
@@ -13,24 +15,29 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
-import com.deificdigital.poster_making.Adapters.CategoryAdapter;
+import com.deificdigital.poster_making.Adapters.PoliticalAdapter;
+import com.deificdigital.poster_making.Adapters.UpcomingAdapter;
 import com.deificdigital.poster_making.Adapters.CustomAdapter;
 import com.deificdigital.poster_making.Adapters.NewestAdapter;
 import com.deificdigital.poster_making.Adapters.ViewPagerAdapter;
+import com.deificdigital.poster_making.CustomSeeAllActivity;
+import com.deificdigital.poster_making.PoliticalSeeallActivity;
 import com.deificdigital.poster_making.R;
+import com.deificdigital.poster_making.UpcomingSeeAllActivity;
 import com.deificdigital.poster_making.models.Category;
 import com.deificdigital.poster_making.models.CustomModel;
 import com.deificdigital.poster_making.models.NewestModel;
+import com.deificdigital.poster_making.models.PoliticalModel;
 import com.deificdigital.poster_making.responses.ApiResponse;
 import com.deificdigital.poster_making.models.ImageData;
 import com.deificdigital.poster_making.responses.CategoryResponse;
 import com.deificdigital.poster_making.responses.CustomResponse;
 import com.deificdigital.poster_making.responses.NewestResponse;
+import com.deificdigital.poster_making.responses.PoliticalResponse;
+import com.facebook.shimmer.ShimmerFrameLayout;
 
 import java.util.List;
 
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -46,11 +53,14 @@ public class HomeFragment extends Fragment {
     private Runnable sliderRunnable;
     private int currentPage = 0;
     private RecyclerView recyclerView;
-    private CategoryAdapter adapter;
+    private UpcomingAdapter adapter;
     private NewestAdapter newestAdapter;
     private RecyclerView newestRecyclerView;
     private RecyclerView customRecyclerView;
     private CustomAdapter customAdapter;
+    private PoliticalAdapter politicalAdapter;
+    private RecyclerView politicalRecyclerView;
+    private ShimmerFrameLayout shimmerViewPager, shimmerUpcoming, shimmerCustom, shimmerNewest;
 
     public HomeFragment() {
     }
@@ -79,7 +89,54 @@ public class HomeFragment extends Fragment {
 
         customRecyclerView = view.findViewById(R.id.rvCustom);
         customRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 1, GridLayoutManager.HORIZONTAL, false));
+        fetchCustom();
 
+        politicalRecyclerView = view.findViewById(R.id.rvPolitical);
+        politicalRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 1, GridLayoutManager.HORIZONTAL, false));
+        fetchPolitical();
+
+        TextView UpcomingSeeAll = view.findViewById(R.id.tvUpcomingSeeAll);
+        UpcomingSeeAll.setOnClickListener(v -> {startActivity(new Intent(getActivity(), UpcomingSeeAllActivity.class));});
+
+        TextView CustomSeeAll = view.findViewById(R.id.tvCustomSeeAll);
+        CustomSeeAll.setOnClickListener(v -> {startActivity(new Intent(getActivity(), CustomSeeAllActivity.class));});
+
+        TextView PoliticalSeeAll = view.findViewById(R.id.tvPoliticalSeeAll);
+        PoliticalSeeAll.setOnClickListener(v -> {startActivity(new Intent(getActivity(), PoliticalSeeallActivity.class));});
+
+        return view;
+    }
+
+    private void fetchPolitical(){
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://postermaking.deifichrservices.com/") // Base URL
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ApiServicePolitical apiService = retrofit.create(ApiServicePolitical.class);
+
+        Call<PoliticalResponse> call = apiService.fetchCategories();
+        call.enqueue(new Callback<PoliticalResponse>() {
+            @Override
+            public void onResponse(Call<PoliticalResponse> call, Response<PoliticalResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<PoliticalModel> dataList = response.body().getData();
+                    politicalAdapter = new PoliticalAdapter(getContext(), dataList);
+                    politicalRecyclerView.setAdapter(politicalAdapter);
+                } else {
+                    Toast.makeText(getContext(), "Failed to load data", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<PoliticalResponse> call, Throwable t) {
+                Log.e("API Error", "onFailure: " + t.getMessage());
+                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void fetchCustom(){
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/") // Base URL
                 .addConverterFactory(GsonConverterFactory.create())
@@ -106,8 +163,6 @@ public class HomeFragment extends Fragment {
                 Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-
-        return view;
     }
 
     private void fetchCategories() {
@@ -124,7 +179,7 @@ public class HomeFragment extends Fragment {
             public void onResponse(Call<CategoryResponse> call, Response<CategoryResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     List<Category> categories = response.body().getData();
-                    adapter = new CategoryAdapter(getActivity(), categories);
+                    adapter = new UpcomingAdapter(getActivity(), categories);
                     recyclerView.setAdapter(adapter);
                 }
             }
@@ -155,14 +210,12 @@ public class HomeFragment extends Fragment {
                     startAutoSlide();
                 }
             }
-
             @Override
             public void onFailure(Call<ApiResponse> call, Throwable t) {
                 Log.e("API", "Error: " + t.getMessage());
             }
         });
     }
-
     private void fetchPosts() {
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/")
@@ -241,5 +294,10 @@ public class HomeFragment extends Fragment {
     public interface ApiServiceCustom {
         @GET("api/custom-category") // Replace with the actual endpoint
         Call<CustomResponse> fetchCategories();
+    }
+
+    public interface ApiServicePolitical {
+        @GET("api/political-category") // Replace with the actual endpoint
+        Call<PoliticalResponse> fetchCategories();
     }
 }

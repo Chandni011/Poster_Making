@@ -18,12 +18,12 @@ import com.deificdigital.poster_making.models.Category;
 
 import java.util.List;
 
-public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHolder> {
+public class UpcomingAdapter extends RecyclerView.Adapter<UpcomingAdapter.ViewHolder> {
 
     private Context context;
     private List<Category> categories;
 
-    public CategoryAdapter(Context context, List<Category> categories) {
+    public UpcomingAdapter(Context context, List<Category> categories) {
         this.context = context;
         this.categories = categories;
     }

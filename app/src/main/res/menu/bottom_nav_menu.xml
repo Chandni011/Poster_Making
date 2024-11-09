@@ -12,8 +12,13 @@
         android:title="Save Images" />
 
     <item
+        android:id="@+id/nav_draft"
+        android:icon="@drawable/ic_draft"
+        android:title="Draft Images"/>
+
+    <item
         android:id="@+id/nav_account"
         android:icon="@drawable/ic_profile"
-        android:title="Profile" />
+        android:title="My Space" />
 
 </menu>

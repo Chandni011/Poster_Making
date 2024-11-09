@@ -4,6 +4,7 @@
     <color name="white">#FFFFFF</color>
     <color name="green">#049C8D</color>
     <color name="Gray">#787474</color>
+    <color name="light_gray">#E6E0E0</color>
     <color name="fontbg">#D0D6D6</color>
     <color name="light_green">#4CAF50</color>
     <color name="cardBackgroundColor">#FFFFFF</color>

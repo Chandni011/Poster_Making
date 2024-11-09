@@ -7,12 +7,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 
+import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.deificdigital.poster_making.LoginActivity;
@@ -40,10 +43,10 @@ public class ProfileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
 
-        LinearLayout llEdit = view.findViewById(R.id.llEdit);
-        LinearLayout llPrivacy = view.findViewById(R.id.llPrivacy);
-        LinearLayout llTerms = view.findViewById(R.id.llTerms);
-        LinearLayout llRefund = view.findViewById(R.id.llRefund);
+        RelativeLayout llEdit = view.findViewById(R.id.llEdit);
+        ConstraintLayout llPrivacy = view.findViewById(R.id.llPrivacy);
+        ConstraintLayout llTerms = view.findViewById(R.id.llTerms);
+        ConstraintLayout llRefund = view.findViewById(R.id.llRefund);
 
         llPrivacy.setOnClickListener(v -> {
             startActivity(new Intent(getContext(), PrivacyPolicyActivity.class));
@@ -61,7 +64,7 @@ public class ProfileFragment extends Fragment {
             startActivity(new Intent(getContext(), RefundActivity.class));
         });
 
-        LinearLayout llLogOut = view.findViewById(R.id.llLogOut);
+        ConstraintLayout llLogOut = view.findViewById(R.id.llLogOut);
         llLogOut.setOnClickListener(v -> logOut());
 
         return view;

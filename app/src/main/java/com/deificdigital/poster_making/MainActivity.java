@@ -18,6 +18,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
 import com.airbnb.lottie.LottieAnimationView;
+import com.deificdigital.poster_making.fragments.DraftFragment;
 import com.deificdigital.poster_making.fragments.HomeFragment;
 import com.deificdigital.poster_making.fragments.ProfileFragment;
 import com.deificdigital.poster_making.fragments.SaveImagesFragment;
@@ -38,8 +39,8 @@ public class MainActivity extends AppCompatActivity {
         lottieVegetables = findViewById(R.id.lottieVegetables);
         fragmentContainer = findViewById(R.id.fragment_container);
 
-        registerReceiver(networkReceiver, new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE"));
-        checkInternetAndUpdateUI();
+//        registerReceiver(networkReceiver, new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE"));
+//        checkInternetAndUpdateUI();
 
 //        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
 //            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -50,17 +51,18 @@ public class MainActivity extends AppCompatActivity {
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
-            if (!isNetworkAvailable(this)) {
-                lottieVegetables.setVisibility(View.VISIBLE);
-                fragmentContainer.setVisibility(View.GONE);
-                return false;
-            }
-
+//            if (!isNetworkAvailable(this)) {
+//                lottieVegetables.setVisibility(View.VISIBLE);
+//                fragmentContainer.setVisibility(View.GONE);
+//                return false;
+//            }
             int id = item.getItemId();
             if (id == R.id.nav_home){
                 loadFrag(new HomeFragment(), false);
             } else if (id == R.id.nav_saved) {
                 loadFrag(new SaveImagesFragment(), false);
+            } else if (id == R.id.nav_draft) {
+                loadFrag(new DraftFragment(), false);
             } else {
                 loadFrag(new ProfileFragment(), false);
             }
@@ -68,29 +70,26 @@ public class MainActivity extends AppCompatActivity {
         });
         bottomNavigationView.setSelectedItemId(R.id.nav_home);
     }
-
-    private final BroadcastReceiver networkReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            checkInternetAndUpdateUI();
-        }
-    };
-
-    private void checkInternetAndUpdateUI() {
-        if (isNetworkAvailable(this)) {
-            lottieVegetables.setVisibility(View.GONE);
-            fragmentContainer.setVisibility(View.VISIBLE);
-        } else {
-            lottieVegetables.setVisibility(View.VISIBLE);
-            fragmentContainer.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(networkReceiver);
-    }
+//    private final BroadcastReceiver networkReceiver = new BroadcastReceiver() {
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//            checkInternetAndUpdateUI();
+//        }
+//    };
+//    private void checkInternetAndUpdateUI() {
+//        if (isNetworkAvailable(this)) {
+//            lottieVegetables.setVisibility(View.GONE);
+//            fragmentContainer.setVisibility(View.VISIBLE);
+//        } else {
+//            lottieVegetables.setVisibility(View.VISIBLE);
+//            fragmentContainer.setVisibility(View.GONE);
+//        }
+//    }
+//    @Override
+//    protected void onDestroy() {
+//        super.onDestroy();
+//        unregisterReceiver(networkReceiver);
+//    }
     public void loadFrag(Fragment fragment, boolean flag){
         FragmentManager fm = getSupportFragmentManager();
         FragmentTransaction ft = fm.beginTransaction();
@@ -102,16 +101,16 @@ public class MainActivity extends AppCompatActivity {
         ft.commit();
     }
 
-    public boolean isNetworkAvailable(Context context) {
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (connectivityManager != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.getActiveNetwork());
-                return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-            } else {
-                return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
-            }
-        }
-        return false;
-    }
+//    public boolean isNetworkAvailable(Context context) {
+//        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+//        if (connectivityManager != null) {
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+//                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.getActiveNetwork());
+//                return capabilities != null && capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+//            } else {
+//                return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
+//            }
+//        }
+//        return false;
+//    }
 }

@@ -39,6 +39,9 @@ public class FullCategoryImage extends AppCompatActivity {
     private String upcoming__Id;
     private String upcomingName;
     private String upcoming__Type;
+    private String political__Id;
+    private String politicalName;
+    private String political__Type;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +62,11 @@ public class FullCategoryImage extends AppCompatActivity {
         upcomingName = getIntent().getStringExtra("category_name");
         upcoming__Type = getIntent().getStringExtra("category_type");// This should map to "category" in fetchPosts
         Log.d("Get intent", "category__id "+upcoming__Id + ",category__type" + upcoming__Type);
+
+        political__Id = String.valueOf(getIntent().getIntExtra("id", -1)); // The intent extra for "id" maps to "category_type" in fetchPosts
+        politicalName = getIntent().getStringExtra("category_name");
+        political__Type = getIntent().getStringExtra("category_type");// This should map to "category" in fetchPosts
+        Log.d("Get intent", "category__id "+political__Id + ",category__type" + political__Type);
 
         ivBack.setOnClickListener(v -> {
             startActivity(new Intent(FullCategoryImage.this, MainActivity.class));
@@ -82,6 +90,20 @@ public class FullCategoryImage extends AppCompatActivity {
         } else {
             ivTabName.setText(categoryName);
             fetchPosts(apiService, category__Id, category__Type);
+        }
+
+        Retrofit retrofitPolitical = new Retrofit.Builder()
+                .baseUrl("https://postermaking.deifichrservices.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        ApiServicePolitical apiServicePolitical = retrofitPolitical.create(ApiServicePolitical.class);
+
+        if (political__Id.equals("-1")) {
+            Log.e("FullCategoryImage", "Invalid category ID received.");
+        } else {
+            ivTabName.setText(politicalName);
+            fetchPoliticalPosts(apiServicePolitical, category__Id, category__Type);
         }
 
         Retrofit retrofitUpcoming = new Retrofit.Builder()
@@ -121,6 +143,54 @@ public class FullCategoryImage extends AppCompatActivity {
 
                             // Check category and category_type fields
                             if (post.getCategory().equals(category__Type) && post.getCategory_type().equals(category__Id)) {
+                                filteredPosts.add(post);
+                                Log.d("Post After Condition", "Post category: " + post.getCategory() + ", Post category type: " + post.getCategory_type()+",Post category name" + post.getName());
+                            }
+                        }
+                        if (!filteredPosts.isEmpty()) {
+                            adapter.updateData(filteredPosts);
+                        } else {
+                            Log.d("API Response", "No posts found for this category.");
+                        }
+                    }
+                } else {
+                    try {
+                        Log.d("API Error", "Error body: " + response.errorBody().string());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CustomImageResponse> call, Throwable t) {
+                Log.e("API Error", "Failed to fetch data", t);
+            }
+        });
+    }
+
+    private void fetchPoliticalPosts(ApiServicePolitical apiService, String political__Id, String political__Type) {
+        Call<CustomImageResponse> call = apiService.fetchPoliticalPostsByCategory(political__Id, political__Type);
+        call.enqueue(new Callback<CustomImageResponse>() {
+            @Override
+            public void onResponse(Call<CustomImageResponse> call, Response<CustomImageResponse> response) {
+                Log.d("API Response", "Response code: " + response.code());
+
+                if (response.isSuccessful() && response.body() != null) {
+                    Log.d("API Response", "Response body: " + new Gson().toJson(response.body()));
+
+                    List<CustomImageModel> postList = response.body().getData();
+                    Log.d("API Response", "Data received: " + postList.size());
+
+                    if (postList.isEmpty()) {
+                        Log.d("API Response", "Post list is empty, no filtering to be done.");
+                    } else {
+                        List<CustomImageModel> filteredPosts = new ArrayList<>();
+                        for (CustomImageModel post : postList) {
+                            Log.d("Post Debug", "Post category: " + post.getCategory() + ", Post category type: " + post.getCategory_type());
+
+                            // Check category and category_type fields
+                            if (post.getCategory().equals(political__Type) && post.getCategory_type().equals(political__Id)) {
                                 filteredPosts.add(post);
                                 Log.d("Post After Condition", "Post category: " + post.getCategory() + ", Post category type: " + post.getCategory_type()+",Post category name" + post.getName());
                             }
@@ -207,6 +277,14 @@ public class FullCategoryImage extends AppCompatActivity {
         Call<CustomImageResponse> fetchUpcomingPostsByCategory(
                 @Query("category_id") String upcomingId,
                 @Query("category_type") String upcomingType
+        );
+    }
+
+    public interface ApiServicePolitical {
+        @GET("api/get-postbyCategory")
+        Call<CustomImageResponse> fetchPoliticalPostsByCategory(
+                @Query("category_id") String politicalId,
+                @Query("category_type") String politicalType
         );
     }
 }

@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -20,6 +21,7 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -43,18 +45,25 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.deificdigital.poster_making.Adapters.FontAdapter;
+import com.deificdigital.poster_making.classes.SharedSavedImageViewModel;
 import com.deificdigital.poster_making.classes.SharedViewModel;
+import com.deificdigital.poster_making.fragments.DraftFragment;
 import com.deificdigital.poster_making.models.FontModel;
 import com.deificdigital.poster_making.models.User;
 import com.deificdigital.poster_making.responses.UserResponse;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
 import com.yalantis.ucrop.UCrop;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import ja.burhanrashid52.photoeditor.PhotoEditor;
 import ja.burhanrashid52.photoeditor.PhotoEditorView;
@@ -85,7 +94,7 @@ public class FullImageActivity extends AppCompatActivity {
     private RecyclerView rvFonts;
     private FontAdapter fontAdapter;
     private List<FontModel> fontList;
-    private SharedViewModel sharedViewModel;
+    private SharedSavedImageViewModel sharedSavedImageViewModel;
 
     private static final String PREFS_NAME = "SavedImagePrefs";
     private static final String KEY_IMAGE_PATHS = "image_paths";
@@ -94,6 +103,14 @@ public class FullImageActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_full_image);
+
+//        String imagePath = "/data/user/0/com.deificdigital.poster_making/cache/edited_image.png";
+//
+//        // Save the image path to SharedPreferences
+//        SharedPreferences sharedDraftPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+//        DraftFragment.saveImagePathToPreferences(imagePath, sharedDraftPreferences);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
 
         rvFonts = findViewById(R.id.rvFonts);
         rvFonts.setLayoutManager(new LinearLayoutManager(this));
@@ -105,7 +122,7 @@ public class FullImageActivity extends AppCompatActivity {
         ImageView ivBack = findViewById(R.id.ivBack);
 
         ivDownload.setOnClickListener(v -> {checkPermissionAndSaveImage();});
-        sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
+        sharedSavedImageViewModel = new ViewModelProvider(this).get(SharedSavedImageViewModel.class);
 
         ivBack.setOnClickListener(v -> {
             startActivity(new Intent(FullImageActivity.this, MainActivity.class));
@@ -672,5 +689,60 @@ public class FullImageActivity extends AppCompatActivity {
             existingPaths += "," + imagePath;
         }
         prefs.edit().putString(KEY_IMAGE_PATHS, existingPaths).apply();
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Capture the current view content into a bitmap
+        Bitmap bitmap = Bitmap.createBitmap(mPhotoEditorView.getWidth(), mPhotoEditorView.getHeight(), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        mPhotoEditorView.draw(canvas);
+
+        // Save the bitmap to a file and retrieve the path
+        String filePath = saveBitmapToFile(bitmap);
+
+        // Save the file path to SharedPreferences directly in FullImageActivity
+        saveImagePathToPreferences(filePath);
+
+        // Use ViewModel to notify the app about the saved path if needed
+        SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
+        sharedViewModel.setSavedImagePath(filePath);
+
+        // Go back to MainActivity
+        Intent intent = new Intent(FullImageActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private String saveBitmapToFile(Bitmap bitmap) {
+        try {
+            // Generate a unique filename based on the current timestamp
+            String uniqueFileName = "edited_image_" + System.currentTimeMillis() + ".png";
+            File file = new File(getCacheDir(), uniqueFileName);
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            fos.close();
+            return file.getAbsolutePath();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void saveImagePathToPreferences(String imagePath) {
+        SharedPreferences sharedDraftPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        Gson gson = new Gson();
+
+        // Load existing paths, add new path, and save back as JSON
+        String json = sharedDraftPreferences.getString("image_paths", "[]");
+        List<String> imagePaths = gson.fromJson(json, new TypeToken<List<String>>() {}.getType());
+
+        if (!imagePaths.contains(imagePath)) {
+            imagePaths.add(imagePath);
+        }
+
+        SharedPreferences.Editor editor = sharedDraftPreferences.edit();
+        editor.putString("image_paths", gson.toJson(imagePaths));  // Save as JSON
+        editor.apply();
     }
 }
