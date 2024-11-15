@@ -1,5 +1,7 @@
 package com.deificdigital.poster_making;
 
+import android.app.ProgressDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,6 +33,7 @@ import retrofit2.http.Path;
 public class UpdateProfileActivity extends AppCompatActivity {
 
     private EditText etName, etEmail, etNumber, etDesignation, etCompanyName;
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,14 +55,18 @@ public class UpdateProfileActivity extends AppCompatActivity {
         ivBack.setOnClickListener(v -> {finish();});
 
         SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-        int userId = sharedPreferences.getInt("user_id", -1);
+        String userId = sharedPreferences.getString("user_id", "-1");
 
-        if (userId != -1) {
-            fetchUserData(userId);
+        if (Integer.parseInt(userId) != -1) {
+            fetchUserData(Integer.parseInt(userId));
         } else {
             Log.e("API", "User ID not found!");
         }
-        btnSave.setOnClickListener(v -> updateUserData(userId));
+        btnSave.setOnClickListener(v -> {
+            updateUserData(Integer.parseInt(userId));
+//            startActivity(new Intent(UpdateProfileActivity.this, MainActivity.class));
+//            finish();
+        });
     }
     private void fetchUserData(int userId) {
         Retrofit retrofit = new Retrofit.Builder()
@@ -82,7 +89,6 @@ public class UpdateProfileActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     UserResponse responseModel = response.body();
                     if (responseModel.getStatus() == 1 && responseModel.getData() != null) {
-
                         User user = responseModel.getData().get(0);
                         setDataInUI(user);
                         setDataInUI(responseModel.getData().get(0));
@@ -109,11 +115,17 @@ public class UpdateProfileActivity extends AppCompatActivity {
         etCompanyName.setText(user.getCompany_name());
     }
     private void updateUserData(int userId) {
+
         String name = etName.getText().toString().trim();
         String email = etEmail.getText().toString().trim();
         String phone = etNumber.getText().toString().trim();
         String designation = etDesignation.getText().toString().trim();
         String companyName = etCompanyName.getText().toString().trim();
+
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Please wait...");
+        progressDialog.setMessage("Saving...");
+        progressDialog.show();
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/")
@@ -134,6 +146,7 @@ public class UpdateProfileActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<UserUpdateResponse> call, Response<UserUpdateResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    progressDialog.dismiss();
                     UserUpdateResponse updateResponse = response.body();
                     if (updateResponse.getStatus() == 1) {
                         Toast.makeText(UpdateProfileActivity.this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
@@ -141,6 +154,7 @@ public class UpdateProfileActivity extends AppCompatActivity {
                         Toast.makeText(UpdateProfileActivity.this, updateResponse.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
+                    progressDialog.dismiss();
                     Log.e("API", "Update Error: " + response.code() + " - " + response.message());
                     if (response.errorBody() != null) {
                         try {

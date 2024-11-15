@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -29,10 +30,12 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.RoundedBitmapDrawable;
@@ -41,15 +44,17 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.airbnb.lottie.LottieAnimationView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
 import com.deificdigital.poster_making.Adapters.FontAdapter;
+import com.deificdigital.poster_making.classes.EditOperation;
 import com.deificdigital.poster_making.classes.SharedSavedImageViewModel;
 import com.deificdigital.poster_making.classes.SharedViewModel;
-import com.deificdigital.poster_making.fragments.DraftFragment;
 import com.deificdigital.poster_making.models.FontModel;
 import com.deificdigital.poster_making.models.User;
+import com.deificdigital.poster_making.responses.StatusResponse;
 import com.deificdigital.poster_making.responses.UserResponse;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
@@ -61,9 +66,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import ja.burhanrashid52.photoeditor.PhotoEditor;
 import ja.burhanrashid52.photoeditor.PhotoEditorView;
@@ -71,6 +76,7 @@ import okhttp3.FormBody;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
@@ -95,6 +101,10 @@ public class FullImageActivity extends AppCompatActivity {
     private FontAdapter fontAdapter;
     private List<FontModel> fontList;
     private SharedSavedImageViewModel sharedSavedImageViewModel;
+    private boolean isEdited = false;
+    private boolean isDataFetched = false;
+    private List<EditOperation> editOperations = new ArrayList<>();
+    private LottieAnimationView tickMark;
 
     private static final String PREFS_NAME = "SavedImagePrefs";
     private static final String KEY_IMAGE_PATHS = "image_paths";
@@ -102,26 +112,46 @@ public class FullImageActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+//        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_full_image);
-
-//        String imagePath = "/data/user/0/com.deificdigital.poster_making/cache/edited_image.png";
-//
-//        // Save the image path to SharedPreferences
-//        SharedPreferences sharedDraftPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
-//        DraftFragment.saveImagePathToPreferences(imagePath, sharedDraftPreferences);
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
 
         rvFonts = findViewById(R.id.rvFonts);
         rvFonts.setLayoutManager(new LinearLayoutManager(this));
 
+        SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        String userId = sharedPreferences.getString("user_id", "-1");
+
 //        ImageView ivUndo = findViewById(R.id.ivUndo);
 //        ImageView ivRedo =  findViewById(R.id.ivRedo);
         ImageView ivAddText = findViewById(R.id.ivAddText);
         ImageView ivDownload = findViewById(R.id.ivDownload);
         ImageView ivBack = findViewById(R.id.ivBack);
+        mPhotoEditorView = findViewById(R.id.photoEditorView);
 
-        ivDownload.setOnClickListener(v -> {checkPermissionAndSaveImage();});
+        String imagePath = getIntent().getStringExtra("image_path");
+        String source = getIntent().getStringExtra("source");
+
+        if (imagePath != null) {
+            Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+            if (bitmap != null) {
+                mPhotoEditorView.getSource().setImageBitmap(bitmap);
+            } else {
+                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "No image path provided", Toast.LENGTH_SHORT).show();
+        }
+        if (!"drafts".equals(source)) {
+            // Only call fetchDataFromApi if not coming from the DraftFragment
+            if (!isDataFetched) {
+                fetchUserData();
+            }
+        }
+        ivDownload.setOnClickListener(v -> {
+            checkUserStatusAndDownload(Integer.parseInt(userId));
+        });
         sharedSavedImageViewModel = new ViewModelProvider(this).get(SharedSavedImageViewModel.class);
 
         ivBack.setOnClickListener(v -> {
@@ -142,12 +172,13 @@ public class FullImageActivity extends AppCompatActivity {
                         })
                         .setNegativeButton("Cancel", null)
                         .show();
+            isEdited = true;
         });
         ImageView ivChangeFont = findViewById(R.id.ivChangeFont);
         LinearLayout llFont = findViewById(R.id.llFont);
         ImageView ivDown2 = findViewById(R.id.ivDown2);
 
-        ivChangeFont.setOnClickListener(v -> {llFont.setVisibility(View.VISIBLE);});
+        ivChangeFont.setOnClickListener(v -> {llFont.setVisibility(View.VISIBLE); isEdited = true;});
         ivDown2.setOnClickListener(v -> {llFont.setVisibility(View.GONE);});
         fontList = new ArrayList<>();
         fontAdapter = new FontAdapter(this, fontList, font -> {
@@ -164,7 +195,7 @@ public class FullImageActivity extends AppCompatActivity {
         LinearLayout llColor = findViewById(R.id.llColor);
         ImageView ivDown = findViewById(R.id.ivDown);
         LinearLayout colorPalette = findViewById(R.id.colorPalette);
-        ivChangeColor.setOnClickListener(v -> {llColor.setVisibility(View.VISIBLE);});
+        ivChangeColor.setOnClickListener(v -> {llColor.setVisibility(View.VISIBLE); isEdited = true;});
         ivDown.setOnClickListener(v -> {llColor.setVisibility(View.GONE);});
         int[] colors = {
                 Color.parseColor("#ffffff"), Color.parseColor("#cccccc"), Color.parseColor("#999999"),
@@ -195,13 +226,13 @@ public class FullImageActivity extends AppCompatActivity {
             colorPalette.addView(colorView);
         }
         ivAddImage = findViewById(R.id.ivAddImage);
-        ivAddImage.setOnClickListener(v -> openGallery());
+        ivAddImage.setOnClickListener(v -> {openGallery(); isEdited = true;});
 
         mPhotoEditorView = findViewById(R.id.photoEditorView);
         mPhotoEditor = new PhotoEditor.Builder(this, mPhotoEditorView).build();
         String imageUrl = getIntent().getStringExtra("image_url");
         loadImage(imageUrl);
-        fetchUserData();
+//        fetchUserData();
 
         findViewById(R.id.main).setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -273,8 +304,9 @@ public class FullImageActivity extends AppCompatActivity {
                 .start(this);
     }
     private void fetchUserData() {
+        isDataFetched = true;
         SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-        int userId = sharedPreferences.getInt("user_id", -1);
+        String userId = sharedPreferences.getString("user_id", "-1");
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("https://postermaking.deifichrservices.com/api/")
@@ -283,7 +315,7 @@ public class FullImageActivity extends AppCompatActivity {
         ApiService apiService = retrofit.create(ApiService.class);
 
         RequestBody requestBody = new FormBody.Builder()
-                .add("user_id", String.valueOf(userId))
+                .add("user_id",(userId))
                 .build();
 
         Call<UserResponse> call = apiService.getUserData(requestBody);
@@ -295,6 +327,9 @@ public class FullImageActivity extends AppCompatActivity {
                     if (userResponse.getStatus() == 1 && userResponse.getData() != null && !userResponse.getData().isEmpty()) {
                         User user = userResponse.getData().get(0);
                         addUserDetailsToImage(user);
+//                        String userId = String.valueOf(userResponse.getData().get(0).getId());
+//                        // Proceed with checking the premium status
+//                        checkPremiumStatus(userId, post_name);
                     } else {
                         Toast.makeText(FullImageActivity.this, "No user data found", Toast.LENGTH_SHORT).show();
                     }
@@ -317,7 +352,6 @@ public class FullImageActivity extends AppCompatActivity {
                     public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
                         mPhotoEditorView.getSource().setImageDrawable(resource);
                     }
-
                     @Override
                     public void onLoadCleared(@Nullable Drawable placeholder) {
                     }
@@ -376,6 +410,7 @@ public class FullImageActivity extends AppCompatActivity {
             else{
                 Toast.makeText(this, "Please select any text.", Toast.LENGTH_SHORT).show();
             }
+            isEdited = true;
         });
         resizeIcon.setOnTouchListener(new View.OnTouchListener() {
             private float initialY;
@@ -690,33 +725,138 @@ public class FullImageActivity extends AppCompatActivity {
         }
         prefs.edit().putString(KEY_IMAGE_PATHS, existingPaths).apply();
     }
+    public static class retrofitClientCheck {
+        private static Retrofit instance;
+        private static final String BASE_URL = "https://postermaking.deifichrservices.com/";
 
+        private retrofitClientCheck() {}
+
+        public static Retrofit getInstance() {
+            if (instance == null) {
+                instance = new Retrofit.Builder()
+                        .baseUrl(BASE_URL)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build();
+            }
+            return instance;
+        }
+    }
+    public interface ApiServiceStatus {
+        @POST("api/check-limit")
+        Call<StatusResponse> checkPremiumStatus(@Body Map<String, String> params);
+    }
+    String post_name = "qwe";
+
+    private void checkUserStatusAndDownload(int userId) {
+        fetchUserId(userId);
+    }
+    private void fetchUserId(int userId) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://postermaking.deifichrservices.com/api/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        UpdateProfileActivity.ApiService apiService = retrofit.create(UpdateProfileActivity.ApiService.class);
+        RequestBody requestBody = new FormBody.Builder()
+                .add("user_id", String.valueOf(userId))
+                .build();
+        Request request = new Request.Builder()
+                .url("https://postermaking.deifichrservices.com/api/user/getData")
+                .post(requestBody)
+                .build();   Call<UserResponse> call = apiService.getUserData(requestBody);
+
+        call.enqueue(new Callback<UserResponse>() {
+            @Override
+            public void onResponse(Call<UserResponse> call, Response<UserResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    UserResponse userResponse = response.body();
+                    if (userResponse.getStatus() == 1 && userResponse.getData() != null && !userResponse.getData().isEmpty()) {
+                        String userId = String.valueOf(userResponse.getData().get(0).getId());
+                        checkPremiumStatus(userId, post_name);
+                    } else {
+                        Toast.makeText(FullImageActivity.this, "User not found or error fetching data", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(FullImageActivity.this, "Failed to fetch user data. Please try again.", Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override
+            public void onFailure(Call<UserResponse> call, Throwable t) {
+                Toast.makeText(FullImageActivity.this, "Network error while fetching user data", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    public void checkPremiumStatus(String userId, String post_name) {
+        Map<String, String> params = new HashMap<>();
+        params.put("user_id", userId);
+        params.put("post_name", post_name);
+
+        ApiServiceStatus apiService = retrofitClientCheck.getInstance().create(ApiServiceStatus.class);
+        Call<StatusResponse> call = apiService.checkPremiumStatus(params);
+        call.enqueue(new Callback<StatusResponse>() {
+            @Override
+            public void onResponse(Call<StatusResponse> call, Response<StatusResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    StatusResponse apiResponse = response.body();
+                    if (apiResponse.getStatus() == 1) {
+                        // Premium status is valid, proceed with saving the image
+                        playTickAnimation();
+                        checkPermissionAndSaveImage();
+                    } else {
+                        startActivity(new Intent(FullImageActivity.this, Premium_Description_Activity.class));
+                        finish();
+//                        Toast.makeText(FullImageActivity.this, "Please take premium subscription. User ID: " + userId, Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    // Log the error details to understand why it's failing
+                    Log.e("API Error", "Status Code: " + response.code());
+                    if (response.errorBody() != null) {
+                        try {
+                            String errorResponse = response.errorBody().string();
+                            Log.e("API Error", "Error Response: " + errorResponse);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    Toast.makeText(FullImageActivity.this, "Failed to check status. Please try again.", Toast.LENGTH_SHORT).show();
+                }
+            }
+            @Override
+            public void onFailure(Call<StatusResponse> call, Throwable t) {
+                // Handle failure
+                Toast.makeText(FullImageActivity.this, "Network error. Please try again.", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    private void playTickAnimation() {
+        CardView llLottie = findViewById(R.id.llLottie);
+        LottieAnimationView tickAnimation = findViewById(R.id.tickAnimation);
+
+        llLottie.setVisibility(View.VISIBLE);
+        tickAnimation.setVisibility(View.VISIBLE);
+        tickAnimation.playAnimation();
+
+        new Handler().postDelayed(() -> llLottie.setVisibility(View.GONE), 2000);
+    }
     @Override
     public void onBackPressed() {
-        // Capture the current view content into a bitmap
-        Bitmap bitmap = Bitmap.createBitmap(mPhotoEditorView.getWidth(), mPhotoEditorView.getHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        mPhotoEditorView.draw(canvas);
+        if (isEdited) {
+            Bitmap bitmap = Bitmap.createBitmap(mPhotoEditorView.getWidth(), mPhotoEditorView.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            mPhotoEditorView.draw(canvas);
 
-        // Save the bitmap to a file and retrieve the path
-        String filePath = saveBitmapToFile(bitmap);
+            String filePath = saveBitmapToFile(bitmap);
+            saveImagePathToPreferences(filePath);
 
-        // Save the file path to SharedPreferences directly in FullImageActivity
-        saveImagePathToPreferences(filePath);
-
-        // Use ViewModel to notify the app about the saved path if needed
-        SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
-        sharedViewModel.setSavedImagePath(filePath);
-
-        // Go back to MainActivity
+            SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
+            sharedViewModel.setSavedImagePath(filePath);
+        }
         Intent intent = new Intent(FullImageActivity.this, MainActivity.class);
         startActivity(intent);
         finish();
     }
-
     private String saveBitmapToFile(Bitmap bitmap) {
         try {
-            // Generate a unique filename based on the current timestamp
             String uniqueFileName = "edited_image_" + System.currentTimeMillis() + ".png";
             File file = new File(getCacheDir(), uniqueFileName);
             FileOutputStream fos = new FileOutputStream(file);
@@ -728,21 +868,16 @@ public class FullImageActivity extends AppCompatActivity {
             return null;
         }
     }
-
     private void saveImagePathToPreferences(String imagePath) {
         SharedPreferences sharedDraftPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
         Gson gson = new Gson();
-
-        // Load existing paths, add new path, and save back as JSON
         String json = sharedDraftPreferences.getString("image_paths", "[]");
         List<String> imagePaths = gson.fromJson(json, new TypeToken<List<String>>() {}.getType());
-
         if (!imagePaths.contains(imagePath)) {
             imagePaths.add(imagePath);
         }
-
         SharedPreferences.Editor editor = sharedDraftPreferences.edit();
-        editor.putString("image_paths", gson.toJson(imagePaths));  // Save as JSON
+        editor.putString("image_paths", gson.toJson(imagePaths));
         editor.apply();
     }
 }

@@ -1,5 +1,6 @@
 package com.deificdigital.poster_making;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences; // Import SharedPreferences
 import android.graphics.Bitmap;
@@ -44,6 +45,7 @@ public class PersonalDetailsActivity extends AppCompatActivity {
 
     private ImageView ivDp;
     private String profilePicBase64;
+    private ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,8 +114,12 @@ public class PersonalDetailsActivity extends AppCompatActivity {
     }
 
     private void sendUserData(login_model user) {
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Please wait...");
+        progressDialog.setMessage("Saving...");
+        progressDialog.show();
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://postermaking.deifichrservices.com/api/") // Replace with your base URL
+                .baseUrl("https://postermaking.deifichrservices.com/api/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
@@ -124,38 +130,42 @@ public class PersonalDetailsActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ResponseModel> call, Response<ResponseModel> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    progressDialog.dismiss();
                     ResponseModel responseModel = response.body();
                     Log.d("API", "User created: " + responseModel.getMessage());
                     Log.d("API", "User ID: " + responseModel.getUser_id());
 
-                    int userId = responseModel.getUser_id();
+                    String userId = String.valueOf(responseModel.getUser_id());
+                    String name = user.getName();
+                    String email = user.getEmail();
+                    String phone = user.getPhone();
+
                     SharedPreferences sharedPreferences = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
                     SharedPreferences.Editor editor = sharedPreferences.edit();
-                    editor.putInt("user_id", userId);
+                    editor.putString("user_id", userId);
+                    editor.putString("user_name", name);
+                    editor.putString("user_email", email);
+                    editor.putString("user_mobile", phone);
                     editor.apply();
-
-                    Log.d("API", "User ID saved: " + userId); // Log saved ID for debugging
 
                     Intent intent = new Intent(PersonalDetailsActivity.this, MainActivity.class);
                     startActivity(intent);
                     finish();
                 } else {
+                    progressDialog.dismiss();
                     Log.e("API", "Response Error: " + response.message());
                 }
             }
-
             @Override
             public void onFailure(Call<ResponseModel> call, Throwable t) {
                 Log.e("API", "Request Failed: " + t.getMessage());
             }
         });
     }
-
     public interface ApiService {
         @POST("user/store")
         Call<ResponseModel> saveUserData(@Body login_model user);
     }
-
     private void showImagePickerDialog() {
         String[] options = {"Gallery"};
         new AlertDialog.Builder(this)

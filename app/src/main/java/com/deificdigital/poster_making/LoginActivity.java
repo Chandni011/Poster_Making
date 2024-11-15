@@ -1,5 +1,6 @@
 package com.deificdigital.poster_making;
 
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -41,11 +42,6 @@ public class LoginActivity extends AppCompatActivity {
         sharedPreferences = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE);
 
         // Check if the user is a returning user
-        boolean isReturningUser = sharedPreferences.getBoolean("isReturningUser", false);
-        if (isReturningUser) {
-            navigateToMainActivity();
-            return; // Exit onCreate to avoid initializing login UI
-        }
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id)) // from google-services.json
@@ -55,7 +51,6 @@ public class LoginActivity extends AppCompatActivity {
 
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
-        // Sign in button click
         findViewById(R.id.clLogin).setOnClickListener(v -> signIn());
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -63,8 +58,19 @@ public class LoginActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-    }
 
+        boolean isReturningUser = sharedPreferences.getBoolean("isReturningUser", false);
+        if (isReturningUser) {
+            // If the user has logged in before, redirect to MainActivity
+            navigateToMainActivity();
+            return; // Stop further execution of onCreate
+        }
+    }
+    private void navigateToMainActivity() {
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
+    }
     private void signIn() {
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();
         startActivityForResult(signInIntent, RC_SIGN_IN);
@@ -88,6 +94,10 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Loading...");
+        progressDialog.setMessage("Please wait...");
+        progressDialog.show();
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         mAuth.signInWithCredential(credential).addOnCompleteListener(this, task -> {
             if (task.isSuccessful()) {
@@ -98,9 +108,26 @@ public class LoginActivity extends AppCompatActivity {
 
                     sharedPreferences.edit().putBoolean("isReturningUser", true).apply();
 
+//                    boolean isReturningUser = sharedPreferences.getBoolean("isReturningUser", false);
+//
+//                    Intent intent;
+//                    if (isReturningUser) {
+//                        // If the user is returning, navigate to UpdateProfileActivity
+//                        intent = new Intent(LoginActivity.this, UpdateProfileActivity.class);
+//                    } else {
+//                        // If it's a new user, navigate to PersonalDetailsActivity
+//                        intent = new Intent(LoginActivity.this, PersonalDetailsActivity.class);
+//                    }
+
+//                    intent.putExtra("name", name);
+//                    intent.putExtra("email", email);
+//                    startActivity(intent);
+//                    finish();
+
                     Intent intent = new Intent(LoginActivity.this, PersonalDetailsActivity.class);
                     intent.putExtra("name", name);
                     intent.putExtra("email", email);
+                    progressDialog.dismiss();
                     startActivity(intent);
                     finish();
                 }
@@ -108,11 +135,5 @@ public class LoginActivity extends AppCompatActivity {
                 // Handle sign-in failure
             }
         });
-    }
-
-    private void navigateToMainActivity() {
-        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-        startActivity(intent);
-        finish();
     }
 }

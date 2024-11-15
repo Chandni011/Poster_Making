@@ -4,7 +4,7 @@ import com.deificdigital.poster_making.models.ImageData;
 
 import java.util.List;
 
-public class ApiResponse {
+public class ViewPagerResponse {
     private int status;
     private List<ImageData> data;
     private String message;

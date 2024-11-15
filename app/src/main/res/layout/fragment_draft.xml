@@ -1,30 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/fragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".fragments.DraftFragment"
+    android:background="@color/white"
     android:orientation="vertical"
-    android:id="@+id/fragment"
-    android:background="@color/white">
+    tools:context=".fragments.DraftFragment">
 
-    <TextView
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="75dp"
-        android:text="Draft Images"
-        android:textColor="@color/white"
-        android:fontFamily="@font/poppins_medium"
-        android:textStyle="bold"
-        android:textSize="20sp"
-        android:paddingTop="@dimen/_10sdp"
-        android:paddingStart="10dp"
+        android:layout_gravity="center_horizontal"
         android:background="@color/green"
-        android:gravity="center_vertical"/>
+        android:orientation="horizontal">
 
-        <LinearLayout
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="75dp"
+            android:fontFamily="@font/poppins_medium"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:layout_marginTop="@dimen/_10sdp"
+            android:layout_centerHorizontal="true"
+            android:layout_alignParentStart="true"
+            android:text="Draft Images"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/ivDelete"
+            android:layout_width="30dp"
+            android:layout_height="75dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="20dp"
+            android:layout_weight="1"
+            android:src="@drawable/ic_delete_white" />
+
+    </RelativeLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:layout_height="match_parent">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvImages"
@@ -32,8 +57,30 @@
                 android:layout_height="match_parent"
                 android:layout_marginStart="10dp"
                 android:layout_marginTop="10dp"
-                android:layout_marginEnd="10dp"/>
+                android:layout_marginEnd="10dp" />
 
-        </LinearLayout>
+            <ImageView
+                android:id="@+id/ivEmptyDraft"
+                android:layout_width="55dp"
+                android:layout_height="100dp"
+                android:layout_centerInParent="true"
+                android:alpha="0.2"
+                android:src="@drawable/emptydraft" />
+
+            <!--            <a href="https://www.flaticon.com/free-icons/out-of-stock" title="out of stock icons">Out of stock icons created by Mihimihi - Flaticon</a>-->
+
+            <TextView
+                android:id="@+id/tvEmptyDraftText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignBottom="@id/ivEmptyDraft"
+                android:layout_centerInParent="true"
+                android:alpha="0.6"
+                android:text="No draft images found"
+                android:textStyle="bold" />
+
+        </RelativeLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

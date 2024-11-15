@@ -7,6 +7,9 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -22,10 +25,13 @@ import java.util.List;
 
 public class SaveImagesFragment extends Fragment implements SavedImagesAdapter.OnImageClickListener {
 
+
     private static final String PREFS_NAME = "SavedImagePrefs";
     private static final String KEY_IMAGE_PATHS = "image_paths";
     private RecyclerView rvImages;
     private SavedImagesAdapter imagesAdapter;
+    private ImageView ivEmpty;
+    private TextView tvEmptyText;
     private List<String> savedImagePaths = new ArrayList<>();
     private static final int REQUEST_IMAGE_DELETE = 1001; // Define a request code
 
@@ -34,7 +40,10 @@ public class SaveImagesFragment extends Fragment implements SavedImagesAdapter.O
         View view = inflater.inflate(R.layout.fragment_save_images, container, false);
 
         rvImages = view.findViewById(R.id.rvImages);
+        ivEmpty = view.findViewById(R.id.ivEmpty);
+        tvEmptyText = view.findViewById(R.id.tvEmptyText);
         imagesAdapter = new SavedImagesAdapter((ArrayList<String>) savedImagePaths, this);
+
         rvImages.setAdapter(imagesAdapter);
         rvImages.setLayoutManager(new GridLayoutManager(getActivity(), 3, GridLayoutManager.VERTICAL, false));
 
@@ -97,6 +106,14 @@ public class SaveImagesFragment extends Fragment implements SavedImagesAdapter.O
             }
         }
         imagesAdapter.notifyDataSetChanged();
+
+        if (imagesAdapter.getItemCount() != 0) {
+            ivEmpty.setVisibility(View.GONE);
+            tvEmptyText.setVisibility(View.GONE);
+        } else {
+            ivEmpty.setVisibility(View.VISIBLE);
+            tvEmptyText.setVisibility(View.VISIBLE);
+        }
     }
 
     public void addImagePath(String imagePath) {

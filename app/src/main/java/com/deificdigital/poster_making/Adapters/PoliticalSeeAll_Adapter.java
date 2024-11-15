@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.deificdigital.poster_making.FullCategoryImage;
 import com.deificdigital.poster_making.R;
-import com.deificdigital.poster_making.models.CustomModel;
 import com.deificdigital.poster_making.models.PoliticalModel;
 
 import java.util.List;
@@ -43,8 +42,7 @@ public class PoliticalSeeAll_Adapter extends RecyclerView.Adapter<PoliticalSeeAl
 
         holder.textView.setText(item.getName());
 
-        // Load image using Glide
-        String imageUrl = "https://postermaking.deifichrservices.com/public/" + item.getCategory_type();
+        String imageUrl = "https://postermaking.deifichrservices.com/public/" + item.getCategory_image();
         Glide.with(context)
                 .load(imageUrl)
                 .into(holder.imageView);
