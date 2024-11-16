@@ -17,6 +17,7 @@
                     android:id="@+id/ivImage"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:src="@drawable/customplaceholder"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toEndOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"/>

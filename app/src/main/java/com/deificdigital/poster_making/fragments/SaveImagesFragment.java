@@ -110,7 +110,8 @@ public class SaveImagesFragment extends Fragment implements SavedImagesAdapter.O
         if (imagesAdapter.getItemCount() != 0) {
             ivEmpty.setVisibility(View.GONE);
             tvEmptyText.setVisibility(View.GONE);
-        } else {
+        }
+        else {
             ivEmpty.setVisibility(View.VISIBLE);
             tvEmptyText.setVisibility(View.VISIBLE);
         }

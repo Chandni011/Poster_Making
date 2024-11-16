@@ -1,55 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical">
 
     <RelativeLayout
         android:layout_width="120dp"
         android:layout_height="120dp"
-        android:orientation="vertical"
         android:layout_marginEnd="@dimen/_10sdp"
-        android:background="@color/white">
+        android:background="@color/white"
+        android:orientation="vertical">
+
 
         <androidx.cardview.widget.CardView
             android:id="@+id/cdUpcoming"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_marginStart="@dimen/_5sdp"
+            android:layout_marginTop="@dimen/_5sdp"
+            android:layout_marginEnd="@dimen/_5sdp"
+            android:layout_marginBottom="@dimen/_5sdp"
             app:cardCornerRadius="12dp"
-            app:cardElevation="8dp"
-            android:layout_margin="@dimen/_5sdp">
+            app:cardElevation="8dp">
 
             <ImageView
                 android:id="@+id/ivUpcoming"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_gravity="center_horizontal"/>
+                android:layout_gravity="center_horizontal" />
 
             <TextView
                 android:id="@+id/tvDate"
                 android:layout_width="@dimen/_85sdp"
                 android:layout_height="20dp"
                 android:layout_alignEnd="@id/ivUpcoming"
-                android:background="@drawable/date_background"
-                android:textColor="@color/white"
                 android:layout_gravity="end"
-                android:paddingStart="@dimen/_5sdp"/>
+                android:background="@drawable/date_background"
+                android:paddingStart="@dimen/_5sdp"
+                android:textColor="@color/white" />
+
 
         </androidx.cardview.widget.CardView>
+
 
     </RelativeLayout>
 
     <TextView
         android:id="@+id/tvUpcoming"
-        android:layout_width="@dimen/_110sdp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginStart="-8dp"
         android:text="Title"
-        android:layout_margin="@dimen/_5sdp"
-        android:textSize="14sp"
+        android:textAlignment="center"
         android:textColor="@color/black"
-        android:gravity="center_horizontal"
-        android:maxLines="2"
-        android:ellipsize="end"/>
+        android:textSize="14sp"
+        android:textStyle="bold" />
 
 </LinearLayout>
